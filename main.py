@@ -3,6 +3,7 @@ from matplotlib.pyplot import axis
 from models.models import LXMERT, train_model, predict
 from sklearn.metrics import classification_report, accuracy_score
 from utils import bcolors, load_data, plot_training
+import params
 
 torch.manual_seed(0)
 random.seed(0)
@@ -14,16 +15,16 @@ def check_params(args=None):
   parser.add_argument('-arch', metavar='architecture', help='Architecture')
   parser.add_argument('-phase', metavar='phase', help='Phase')
   parser.add_argument('-output', metavar='output', help='Output Path')
-  parser.add_argument('-lr', metavar='lrate', default = 1e-5, type=float, help='learning rate')
-  parser.add_argument('-decay', metavar='decay', default = 2e-5, type=float, help='learning rate decay')
-  parser.add_argument('-splits', metavar='splits', default = 5, type=int, help='spits cross validation')
-  parser.add_argument('-ml', metavar='max_length', default = 120, type=int, help='Maximun Tweets Length')
-  parser.add_argument('-interm_layer', metavar='int_layer', default = 64, type=int, help='Intermediate layers neurons')
-  parser.add_argument('-epoches', metavar='epoches', default=12, type=int, help='Trainning Epoches')
-  parser.add_argument('-bs', metavar='batch_size', default=64, type=int, help='Batch Size')
+  parser.add_argument('-lr', metavar='lrate', default = params.LR , type=float, help='learning rate')
+  parser.add_argument('-decay', metavar='decay', default = params.DECAY, type=float, help='learning rate decay')
+  parser.add_argument('-splits', metavar='splits', default = params.SPLITS, type=int, help='spits cross validation')
+  parser.add_argument('-ml', metavar='max_length', default = params.ML, type=int, help='Maximun Tweets Length')
+  parser.add_argument('-interm_layer', metavar='int_layer', default = params.IL, type=int, help='Intermediate layers neurons')
+  parser.add_argument('-epoches', metavar='epoches', default=params.EPOCHES, type=int, help='Trainning Epoches')
+  parser.add_argument('-bs', metavar='batch_size', default=params.BS, type=int, help='Batch Size')
   parser.add_argument('-dp', metavar='data_path', help='Data Path')
-  parser.add_argument('-min_edge', metavar='min_edge', help='Minimun Edge')
-  parser.add_argument('-max_edge', metavar='max_edge', help='Maximun Edge')
+  parser.add_argument('-min_edge', metavar='min_edge', default=params.MIN_EDGE, type=int, help='Minimun Edge')
+  parser.add_argument('-max_edge', metavar='max_edge', default=params.MAX_EDGE, type=int, help='Maximun Edge')
   parser.add_argument('-dt', metavar='data_test', help='Get Data for test')
   return parser.parse_args(args)
 

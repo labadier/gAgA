@@ -1,0 +1,9 @@
+LR = 1e-5
+DECAY = 2e-5
+SPLITS = 5
+ML = 120
+IL = 64
+EPOCHES = 4
+BS = 3
+MIN_EDGE = 300
+MAX_EDGE = 300
