@@ -26,6 +26,8 @@ def check_params(args=None):
   parser.add_argument('-min_edge', metavar='min_edge', default=params.MIN_EDGE, type=int, help='Minimun Edge')
   parser.add_argument('-max_edge', metavar='max_edge', default=params.MAX_EDGE, type=int, help='Maximun Edge')
   parser.add_argument('-dt', metavar='data_test', help='Get Data for test')
+  parser.add_argument('-gf', metavar='gold_file', help='Data Anotation Files')
+  parser.add_argument('-gft', metavar='gold_file_test', help='Data Anotation FIles')
   return parser.parse_args(args)
 
 if __name__ == '__main__':
@@ -46,6 +48,8 @@ if __name__ == '__main__':
   phase = parameters.phase
   output = parameters.output
   arch = parameters.arch
+  gf = parameters.gf
+  gft = parameters.gft
 
   if arch == 'lxmert':
 
@@ -54,7 +58,7 @@ if __name__ == '__main__':
       if os.path.exists('./logs') == False:
         os.system('mkdir logs')
 
-      images_path, text, labels = load_data('/content/data')
+      images_path, text, labels = load_data(data_path, gf)
       data = {'text':text, 'images':images_path, 'labels':labels}
       history = train_model(data, frcnn_cpu=False, splits = 5, epoches = 4, batch_size = 3, max_length = 120, interm_layer_size = 64, lr = 1e-5,  decay=2e-5, edges ={'max_edge':300, 'min_edge':300})
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished{bcolors.ENDC}")
@@ -63,7 +67,7 @@ if __name__ == '__main__':
 
     if phase == 'eval':
       
-      images_path, text, labels = load_data('/content/data', labeled = False)
+      images_path, text, labels = load_data(data_path, gft, labeled = False)
       data = {'text':text, 'images':images_path, 'labels':labels} 
       model = LXMERT(interm_layer_size=64, max_length=120, max_edge=300, min_edge=300)
       predict(model, data, 3, output)

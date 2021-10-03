@@ -12,11 +12,11 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def load_data(path, labeled = True):
+def load_data(path, gold_file, labeled = True):
 
   if labeled == True:
-    df = pandas.read_csv(os.path.join(path, 'trial.csv'), sep='\t', usecols=['file_name', 'misogynous', 'Text Transcription']).to_numpy()
-  else: df = pandas.read_csv(os.path.join(path, 'trial.csv'), sep='\t', usecols=['file_name', 'Text Transcription']).to_numpy()
+    df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=['file_name', 'misogynous', 'Text Transcription']).to_numpy()
+  else: df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=['file_name', 'Text Transcription']).to_numpy()
   
   labels = []
   text = []

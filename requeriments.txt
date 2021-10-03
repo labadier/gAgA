@@ -1,3 +1,4 @@
+transformers
 opencv-python
 wget
 torchvision
