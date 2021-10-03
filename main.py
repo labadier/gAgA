@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
       images_path, text, labels = load_data(data_path, gf)
       data = {'text':text, 'images':images_path, 'labels':labels}
-      history = train_model(data, frcnn_cpu=False, splits = 5, epoches = 4, batch_size = 3, max_length = 120, interm_layer_size = 64, lr = 1e-5,  decay=2e-5, edges ={'max_edge':300, 'min_edge':300})
+      history = train_model(data, frcnn_cpu=False, splits = splits, epoches = epoches, batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size, lr = learning_rate,  decay=decay, edges ={'max_edge':max_edge, 'min_edge':min_edge})
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished{bcolors.ENDC}")
       plot_training(history[-1], 'xlmert', 'acc')
       exit(0)
@@ -65,7 +65,7 @@ if __name__ == '__main__':
       
       images_path, text = load_data(data_path, gf, labeled = False)
       data = {'text':text, 'images':images_path} 
-      model = LXMERT(interm_layer_size=64, max_length=120, max_edge=300, min_edge=300)
+      model = LXMERT(interm_layer_size=interm_layer_size, max_length=max_length, max_edge=max_edge, min_edge=min_edge)
       predict(model, data, 3, output, images_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
 
