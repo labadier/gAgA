@@ -190,14 +190,13 @@ def train_model(data, frcnn_cpu, splits = 5, epoches = 4, batch_size = 8, max_le
 
       
     print('Training Finished Split: {}'. format(i+1))
-    os.system('rm to_train.csv to_dev.csv')
     del trainloader
     del model
     del devloader
     break
   return history
 
-def predict(model, data, batch_size, output):
+def predict(model, data, batch_size, output, images_path):
 
   devloader = DataLoader(MultimodalData(data['text'], data['images']), batch_size=batch_size, shuffle=False, num_workers=4, worker_init_fn=seed_worker)
 
@@ -217,6 +216,6 @@ def predict(model, data, batch_size, output):
   if os.path.isdir(output) == False:
       os.system(f'mkdir {output}')
 
-  dictionary = {'id': data['images'],  'offense_rating':y_hat}  
-  df = pd.DataFrame(dictionary) 
-  df.to_csv('logs/preds.csv')
+  dictionary = {'id': np.array([i.split('/')[-1] for i in images_path]),  'misogynous':y_hat}  
+  df = pandas.DataFrame(dictionary) 
+  df.to_csv(os.path.join(output, 'preds.csv'))

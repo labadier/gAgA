@@ -25,9 +25,7 @@ def check_params(args=None):
   parser.add_argument('-dp', metavar='data_path', help='Data Path')
   parser.add_argument('-min_edge', metavar='min_edge', default=params.MIN_EDGE, type=int, help='Minimun Edge')
   parser.add_argument('-max_edge', metavar='max_edge', default=params.MAX_EDGE, type=int, help='Maximun Edge')
-  parser.add_argument('-dt', metavar='data_test', help='Get Data for test')
   parser.add_argument('-gf', metavar='gold_file', help='Data Anotation Files')
-  parser.add_argument('-gft', metavar='gold_file_test', help='Data Anotation FIles')
   return parser.parse_args(args)
 
 if __name__ == '__main__':
@@ -44,12 +42,10 @@ if __name__ == '__main__':
   batch_size = parameters.bs
   epoches = parameters.epoches
   data_path = parameters.dp
-  test_path = parameters.dt
   phase = parameters.phase
   output = parameters.output
   arch = parameters.arch
   gf = parameters.gf
-  gft = parameters.gft
 
   if arch == 'lxmert':
 
@@ -67,10 +63,10 @@ if __name__ == '__main__':
 
     if phase == 'eval':
       
-      images_path, text, labels = load_data(data_path, gft, labeled = False)
-      data = {'text':text, 'images':images_path, 'labels':labels} 
+      images_path, text = load_data(data_path, gf, labeled = False)
+      data = {'text':text, 'images':images_path} 
       model = LXMERT(interm_layer_size=64, max_length=120, max_edge=300, min_edge=300)
-      predict(model, data, 3, output)
+      predict(model, data, 3, output, images_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
 
 

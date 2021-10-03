@@ -27,7 +27,7 @@ def load_data(path, gold_file, labeled = True):
     
     if os.path.exists(pic):
       images.append(pic)
-      text.append(df[:,2][i])
+      text.append(df[:,-1][i])
       if labeled == True:
         labels.append(df[:,1][i])
   
