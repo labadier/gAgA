@@ -83,7 +83,7 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, s
         perc = (1+j)*100.0/batches
         last_printed = f'\rEpoch:{epoch+1:3d} of {epoches} step {j+1} of {batches}. {perc:.1f}% loss: {running_loss:.3f}'
         
-        print(last_printed + compute_eta(((time.time()-start_time)*batches)//(j+1)), end="")
+        print(last_printed , end="")#+ compute_eta(((time.time()-start_time)*batches)//(j+1))
 
     model.eval()
     eloss.append(running_loss)
