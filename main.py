@@ -1,7 +1,7 @@
 import argparse, sys, os, numpy as np, torch, random
-from matplotlib.pyplot import axis
-from models.models import LXMERT, train_model, predict
-from sklearn.metrics import classification_report, accuracy_score
+from models.LXMERT import LXMERT
+from models.VisualBERT import VisualBERT
+from models.models import train_model_CV, train_with_dev, predict
 from utils import bcolors, load_data, plot_training
 import params
 
@@ -12,6 +12,8 @@ np.random.seed(0)
 def check_params(args=None):
   parser = argparse.ArgumentParser(description='Language Model Encoder')
 
+
+  parser.add_argument('-modeltype', metavar='modeltype', help='Type of Architecture, e.g. Multimodal', choices=['multimodal', 'text', 'images'])
   parser.add_argument('-arch', metavar='architecture', help='Architecture')
   parser.add_argument('-phase', metavar='phase', help='Phase')
   parser.add_argument('-output', metavar='output', help='Output Path')
@@ -25,7 +27,13 @@ def check_params(args=None):
   parser.add_argument('-dp', metavar='data_path', help='Data Path')
   parser.add_argument('-min_edge', metavar='min_edge', default=params.MIN_EDGE, type=int, help='Minimun Edge')
   parser.add_argument('-max_edge', metavar='max_edge', default=params.MAX_EDGE, type=int, help='Maximun Edge')
-  parser.add_argument('-gf', metavar='gold_file', help='Data Anotation Files')
+  parser.add_argument('-min_boxes', metavar='min_boxes', default=params.MIN_EDGE, type=int, help='Minimun Boxes for Detectron Model')
+  parser.add_argument('-max_boxes', metavar='max_boxes', default=params.MAX_EDGE, type=int, help='Minimun Boxes for Detectron Model')
+  parser.add_argument('-val_rate', metavar='val_rate', default=params.VAL_RATE, type=float, help='Validation Rate')
+  parser.add_argument('-tf', metavar='train_file', help='Data Anotation Files for Training')
+  parser.add_argument('-df', metavar='dev_file', help='Data Anotation Files for Development', default=None)
+  parser.add_argument('-gf', metavar='test_file', help='Data Anotation Files for Testing')
+
   return parser.parse_args(args)
 
 if __name__ == '__main__':
@@ -45,20 +53,41 @@ if __name__ == '__main__':
   phase = parameters.phase
   output = parameters.output
   arch = parameters.arch
-  gf = parameters.gf
-
-  if arch == 'lxmert':
+  
+  tf = parameters.tf
+  df=parameters.df
+  gf=parameters.gf
+  val_rate=parameters.val_rate
+  min_boxes = parameters.min_boxes
+  max_boxes =  parameters.max_boxes
+  modeltype = parameters.modeltype
+  # textF, imageF, labelF ="preprotext", "images","irony"
+  
+  if modeltype == 'multimodal':
 
     if phase == 'train':
 
       if os.path.exists('./logs') == False:
         os.system('mkdir logs')
 
-      images_path, text, labels = load_data(data_path, gf)
+      images_path, text, labels = load_data(data_path, tf, True)
       data = {'text':text, 'images':images_path, 'labels':labels}
-      history = train_model(data, frcnn_cpu=False, splits = splits, epoches = epoches, batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size, lr = learning_rate,  decay=decay, edges ={'max_edge':max_edge, 'min_edge':min_edge})
-      print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished{bcolors.ENDC}")
-      plot_training(history[-1], 'xlmert', 'acc')
+      
+      if df != None:
+        dimages_path, dtext, dlabels = load_data(data_path, df, True)#, imageF, textF, labelF)
+        datadev = {'text':dtext, 'images':dimages_path, 'labels':dlabels}
+        history = train_with_dev(arch, datatrain=data, datadev=datadev, frcnn_cpu=False, epoches = epoches, 
+                            batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
+                            lr = learning_rate, decay=decay, validation_rate=val_rate, max_edge = max_edge, 
+                            min_edge = min_edge, min_boxes = min_boxes, max_boxes = max_boxes)
+      else:
+        history = train_model_CV(arch, data, frcnn_cpu=False, splits = splits, epoches = epoches, 
+                            batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
+                            lr = learning_rate,  decay=decay, max_edge = max_edge, 
+                            min_edge = min_edge, min_boxes = min_boxes, max_boxes = max_boxes)
+      
+      print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
+      plot_training(history[-1], arch, 'acc')
       exit(0)
 
     if phase == 'eval':
@@ -68,5 +97,7 @@ if __name__ == '__main__':
       model = LXMERT(interm_layer_size=interm_layer_size, max_length=max_length, max_edge=max_edge, min_edge=min_edge)
       predict(model, data, 3, output, images_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
+    exit(0)
+  
 
 

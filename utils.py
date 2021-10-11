@@ -12,16 +12,13 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def load_data(path, gold_file, labeled = True):
+def load_data(path, gold_file, labeled = True, imageField="file_name", textField="Text Transcription", labelField="misogynous"):
 
   if labeled == True:
-    df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=['file_name', 'misogynous', 'Text Transcription']).to_numpy()
-  else: df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=['file_name', 'Text Transcription']).to_numpy()
+    df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=[imageField, labelField, textField]).to_numpy()
+  else: df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=[imageField, textField]).to_numpy()
   
-  labels = []
-  text = []
-  images = []
-
+  labels,text,images = [], [],[]
   for i in range(len(df[:,0])):
     pic = os.path.join(path, df[:,0][i])
     
@@ -55,3 +52,6 @@ def plot_training(history, model, measure='loss'):
         os.system('mkdir logs')
 
     plt.savefig(f'./logs/train_history_{model}.png')
+
+if __name__=="__main__":
+    pass
