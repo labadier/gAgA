@@ -10,19 +10,18 @@ from detectron2.layers import nms
 from detectron2 import model_zoo
 from detectron2.config import get_cfg
 from transformers import BertTokenizer, VisualBertModel
+import torch.nn.functional as F
 
 class VisualBERT(torch.nn.Module):
 
   def __init__(self,interm_size=64, max_length=120, **kwargs):
     '''
     kwargs min_edge, max_edge, min_boxes, max_boxes
-    bacth_size for compatibility with lxmert
     '''
     super(VisualBERT, self).__init__()
 
 
     self.best_acc = None
-    self.batch = kwargs['batch_size']
     self.max_length = max_length
     self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     self.interm_neurons = interm_size
@@ -88,7 +87,7 @@ class VisualBERT(torch.nn.Module):
     
     return images, batched_inputs
 
-  def get_box_features(self, features, proposals):
+  def get_box_features(self, features, proposals, batch_size):
     features_list = [features[f] for f in ['p2', 'p3', 'p4', 'p5']]
     box_features = self.FPN.roi_heads.box_pooler(features_list, [x.proposal_boxes for x in proposals])
     box_features = self.FPN.roi_heads.box_head.flatten(box_features)
@@ -96,7 +95,7 @@ class VisualBERT(torch.nn.Module):
     box_features = self.FPN.roi_heads.box_head.fc_relu1(box_features)
     box_features = self.FPN.roi_heads.box_head.fc2(box_features)
 
-    box_features = box_features.reshape(self.batch, 1000, 1024)
+    box_features = box_features.reshape(batch_size, box_features.shape[0]//batch_size, 1024)
     return box_features, features_list
 
 
@@ -131,8 +130,9 @@ class VisualBERT(torch.nn.Module):
     test_score_thresh = self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST
     test_nms_thresh = self.cfg.MODEL.ROI_HEADS.NMS_THRESH_TEST
     cls_prob = scores.detach()
-    cls_boxes = output_boxes.tensor.detach().reshape(1000,80,4)
-    max_conf = torch.zeros((cls_boxes.shape[0]))
+    cls_boxes = output_boxes.tensor.detach()
+    cls_boxes = cls_boxes.reshape(len(cls_boxes)//80,80,4)
+    max_conf = torch.zeros((cls_boxes.shape[0])).to(self.device)
 
     for cls_ind in range(0, cls_prob.shape[1]-1):
         cls_scores = cls_prob[:, cls_ind+1]
@@ -152,18 +152,19 @@ class VisualBERT(torch.nn.Module):
 
     return keep_boxes
 
-  def forward(self, text, images_path):
-
-    P = [cv2.cvtColor(cv2.imread(x), cv2.COLOR_RGB2BGR) for x in images_path]
+  
+  def get_image_features(self, p):
+    
     self.FPN.eval()
-    images, batched_inputs = self.image_preprocess(P)
+    images, batched_inputs = self.image_preprocess(p)
     features = self.FPN.backbone(images.tensor.to(self.device))
     proposals, _ = self.FPN.proposal_generator(images, features)
-    box_features, features_list = self.get_box_features(features, proposals)
+    
+    box_features, features_list = self.get_box_features(features, proposals, len(p))
     pred_class_logits, pred_proposal_deltas = self.get_ROI_prediction_logits(features_list, proposals)
 
     self.frcnn.eval()
-    boxes, scores, image_shapes = self.get_box_scores(pred_class_logits, pred_proposal_deltas)
+    boxes, scores, image_shapes = self.get_box_scores(pred_class_logits, pred_proposal_deltas, proposals)
     output_boxes = [self.get_output_boxes(boxes[i], batched_inputs[i], proposals[i].image_size) for i in range(len(proposals))]
     temp = [self.select_boxes(output_boxes[i], scores[i]) for i in range(len(scores))]
     
@@ -173,10 +174,16 @@ class VisualBERT(torch.nn.Module):
         max_conf.append(mx_conf)
 
     keep_boxes = [self.filter_boxes(keep_box, mx_conf) for keep_box, mx_conf in zip(keep_boxes, max_conf)]
+    return box_features[keep_box[0].copy()]
 
-    visual_embeds = torch.stack([box_feature[keep_box.copy()] for box_feature, keep_box in zip(box_features, keep_boxes)])
-    text = self.tokenizer(text, return_tensors="pt").to(self.device)
+  def forward(self, text, images_path):
 
+    visual_embeds = [self.get_image_features(cv2.cvtColor(cv2.imread(x), cv2.COLOR_RGB2BGR)) for x in images_path]
+    visual_embeds = torch.stack(visual_embeds)
+
+    print(visual_embeds.shape)
+    text = self.tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=self.max_length).to(self.device)
+    
     visual_token_type_ids = torch.ones(visual_embeds.shape[:-1], dtype=torch.long)
     visual_attention_mask = torch.ones(visual_embeds.shape[:-1], dtype=torch.float)
 

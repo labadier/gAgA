@@ -1,4 +1,4 @@
-import pandas, numpy as np, os
+import pandas, numpy as np, os, math
 from matplotlib import pyplot as plt
 
 class bcolors:
@@ -32,6 +32,13 @@ def load_data(path, gold_file, labeled = True, imageField="file_name", textField
     return np.array(images), np.array(text), np.array(labels)
   return np.array(images), np.array(text)
 
+def compute_eta(eta):
+  h = math.floor(eta/3600)
+  m = math.floor(int(eta%3600)/60)
+  s = int(int(eta%3600)%60)
+  
+  return' ETA: {}{}:{}{}:{}{}'.format('0'*(1 - int(math.log10(h + 0.99))), h, '0'*(1 - int(math.log10(m+1+ 0.99))), m, '0'*(1 - int(math.log10(s+0.99))), s)
+        
 
 def plot_training(history, model, measure='loss'):
     
