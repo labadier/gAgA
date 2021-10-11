@@ -155,15 +155,17 @@ class VisualBERT(torch.nn.Module):
   
   def get_image_features(self, p):
     
-    self.FPN.eval()
+
     images, batched_inputs = self.image_preprocess(p)
+    
     features = self.FPN.backbone(images.tensor.to(self.device))
+    # print('ishape', features.shape)
     proposals, _ = self.FPN.proposal_generator(images, features)
     
     box_features, features_list = self.get_box_features(features, proposals, len(p))
     pred_class_logits, pred_proposal_deltas = self.get_ROI_prediction_logits(features_list, proposals)
 
-    self.frcnn.eval()
+    
     boxes, scores, image_shapes = self.get_box_scores(pred_class_logits, pred_proposal_deltas, proposals)
     output_boxes = [self.get_output_boxes(boxes[i], batched_inputs[i], proposals[i].image_size) for i in range(len(proposals))]
     temp = [self.select_boxes(output_boxes[i], scores[i]) for i in range(len(scores))]
@@ -174,14 +176,16 @@ class VisualBERT(torch.nn.Module):
         max_conf.append(mx_conf)
 
     keep_boxes = [self.filter_boxes(keep_box, mx_conf) for keep_box, mx_conf in zip(keep_boxes, max_conf)]
-    return box_features[keep_box[0].copy()]
+    return [box_feature[keep_box.copy()] for box_feature, keep_box in zip(box_features, keep_boxes)]
+
 
   def forward(self, text, images_path):
+    
+    self.FPN.eval()
+    self.frcnn.eval()
+    P = [cv2.cvtColor(cv2.imread(x), cv2.COLOR_RGB2BGR) for x in images_path]
+    visual_embeds = torch.stack([self.get_image_features([p])[0] for p in P]) 
 
-    visual_embeds = [self.get_image_features(cv2.cvtColor(cv2.imread(x), cv2.COLOR_RGB2BGR)) for x in images_path]
-    visual_embeds = torch.stack(visual_embeds)
-
-    print(visual_embeds.shape)
     text = self.tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=self.max_length).to(self.device)
     
     visual_token_type_ids = torch.ones(visual_embeds.shape[:-1], dtype=torch.long)

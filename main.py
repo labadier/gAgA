@@ -99,7 +99,7 @@ if __name__ == '__main__':
       params = {'max_edge': max_edge, 'min_edge': min_edge, 'min_boxes':min_boxes, 'max_boxes':max_boxes}
       model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
 
-      predict(model, data, 3, output, images_path)
+      predict(arch, model, data, batch_size, output, images_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     exit(0)
   
