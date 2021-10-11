@@ -2,6 +2,7 @@ import argparse, sys, os, numpy as np, torch, random
 from models.LXMERT import LXMERT
 from models.VisualBERT import VisualBERT
 from models.models import train_model_CV, train_with_dev, predict
+from models.models import VISUAL_MODELS, MODELS
 from utils import bcolors, load_data, plot_training
 import params
 
@@ -94,10 +95,11 @@ if __name__ == '__main__':
       
       images_path, text = load_data(data_path, gf, labeled = False)
       data = {'text':text, 'images':images_path} 
-      model = LXMERT(interm_layer_size=interm_layer_size, max_length=max_length, max_edge=max_edge, min_edge=min_edge)
+
+      params = {'max_edge': max_edge, 'min_edge': min_edge, 'min_boxes':min_boxes, 'max_boxes':max_boxes, 'batch_size':batch_size}
+      model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
+      
       predict(model, data, 3, output, images_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     exit(0)
   
-
-

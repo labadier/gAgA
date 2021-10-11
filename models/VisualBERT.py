@@ -13,15 +13,16 @@ from transformers import BertTokenizer, VisualBertModel
 
 class VisualBERT(torch.nn.Module):
 
-  def __init__(self, batch_size, interm_size=64, max_length=120, **kwargs):
+  def __init__(self,interm_size=64, max_length=120, **kwargs):
     '''
     kwargs min_edge, max_edge, min_boxes, max_boxes
+    bacth_size for compatibility with lxmert
     '''
     super(VisualBERT, self).__init__()
 
 
     self.best_acc = None
-    self.batch = batch_size
+    self.batch = kwargs['batch_size']
     self.max_length = max_length
     self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     self.interm_neurons = interm_size
@@ -83,7 +84,7 @@ class VisualBERT(torch.nn.Module):
     images = [normalizer(x["image"]) for x in batched_inputs]
 
     # Convert to ImageList
-    images =  ImageList.from_tensors(images.to(self.device), self.FPN.backbone.size_divisibility)
+    images =  ImageList.from_tensors(images, self.FPN.backbone.size_divisibility)
     
     return images, batched_inputs
 

@@ -83,8 +83,8 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, s
         eta = ((time.time()-start_time)*batches)/(j+1)
 
         last_printed = f'\rEpoch:{epoch+1:3d} of {epoches} step {j+1} of {batches}. {perc:.1f}% loss: {running_loss:.3f}'
-        remaining_time = f'ETA: {int(eta/3600):2d}:{int(int(eta%3600)/60):2d}:{int(int(eta%3600)%60):2d}'
-        print('f{last_printed} {remaining_time}', end="")
+        remaining_time = f' ETA: {int(eta/3600):2d}:{int(int(eta%3600)/60):2d}:{int(int(eta%3600)%60):2d}'
+        print(last_printed + remaining_time, end="")
     
     model.eval()
     eloss.append(running_loss)
@@ -138,7 +138,7 @@ def train_model_CV(model_name, data, frcnn_cpu=False, splits = 5, epoches = 4, b
     min_boxes, max_boxes: mimimun and maximum amount of boxes to keep from the region proposal network
   '''
 
-  params = {'max_edge': 600, 'min_edge': 400, 'min_boxes':10, 'max_boxes':100}
+  params = {'max_edge': 600, 'min_edge': 400, 'min_boxes':10, 'max_boxes':100, 'batch_size':batch_size}
 
   if model_name in VISUAL_MODELS.keys() and kwargs['max_edge'] != None :
     params.update({'max_edge':kwargs['max_edge'], 'min_edge':kwargs['min_edge']})
