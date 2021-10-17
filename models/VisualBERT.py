@@ -178,11 +178,12 @@ class VisualBERT(torch.nn.Module):
     keep_boxes = [self.filter_boxes(keep_box, mx_conf) for keep_box, mx_conf in zip(keep_boxes, max_conf)]
 
     ret = []
-    
+    padd_features_boxes = lambda x, t : torch.nn.ZeroPad2d((0, 0, 0, t))(x)
+ 
     for box_feature, keep_box in zip(box_features, keep_boxes):
       if torch.is_tensor(keep_box):
         keep_box = keep_box.cpu().numpy()
-      ret.append(box_feature[keep_box.copy()])
+      ret.append(padd_features_boxes(box_feature[keep_box.copy()], self.MAX_BOXES - keep_box.shape[0]))
     
     return ret
 
