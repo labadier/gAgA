@@ -146,9 +146,9 @@ class VisualBERT(torch.nn.Module):
   def filter_boxes(self, keep_boxes, max_conf):
 
     if len(keep_boxes) < self.MIN_BOXES:
-        keep_boxes = np.argsort(max_conf.cpu()).numpy()[::-1][:self.MIN_BOXES]
+        keep_boxes = np.argsort(max_conf.cpu().numpy())[::-1][:self.MIN_BOXES]
     elif len(keep_boxes) > self.MAX_BOXES:
-        keep_boxes = np.argsort(max_conf.cpu()).numpy()[::-1][:self.MAX_BOXES]
+        keep_boxes = np.argsort(max_conf.cpu().numpy())[::-1][:self.MAX_BOXES]
 
     return keep_boxes
 
@@ -176,7 +176,15 @@ class VisualBERT(torch.nn.Module):
         max_conf.append(mx_conf)
 
     keep_boxes = [self.filter_boxes(keep_box, mx_conf) for keep_box, mx_conf in zip(keep_boxes, max_conf)]
-    return [box_feature[keep_box.copy()] for box_feature, keep_box in zip(box_features, keep_boxes)]
+
+    ret = []
+    
+    for box_feature, keep_box in zip(box_features, keep_boxes):
+      if torch.is_tensor(keep_box):
+        keep_box = keep_box.cpu().numpy()
+      ret.append(box_feature[keep_box.copy()])
+    
+    return ret
 
 
   def forward(self, text, images_path):
