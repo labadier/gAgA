@@ -40,7 +40,7 @@ class MultimodalData(Dataset):
       return {'text': text, 'images': images, 'labels':labels}
     return {'text': text, 'images': images}
 
-def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, split=1):
+def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, split=1):
   
   eloss, eacc, edev_loss, edev_acc = [], [], [], []
   
@@ -110,7 +110,7 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, s
 
     band = False
     if model.best_acc is None or model.best_acc < dev_acc:
-      model.save(f'{model_name}_split_{split}.pt')
+      model.save(os.path.join(output, f'{model_name}_split_{split}.pt'))
       model.best_acc = dev_acc
       band = True
 
@@ -124,7 +124,7 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, s
 
 
 def train_model_CV(model_name, data, frcnn_cpu=False, splits = 5, epoches = 4, batch_size = 8, max_length = 120, 
-                    interm_layer_size = 64, lr = 1e-5,  decay=2e-5, **kwargs):
+                    interm_layer_size = 64, lr = 1e-5,  decay=2e-5, output='./logs', **kwargs):
 
   '''
     kwargs:
@@ -156,7 +156,7 @@ def train_model_CV(model_name, data, frcnn_cpu=False, splits = 5, epoches = 4, b
     trainloader = DataLoader(MultimodalData(data['text'][train_index], data['images'][train_index], data['labels'][train_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
     devloader = DataLoader(MultimodalData(data['text'][test_index], data['images'][test_index], data['labels'][test_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 
-    history.append(train_model(model_name, model, trainloader, devloader, epoches, lr, decay, i+1))
+    history.append(train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, i+1))
       
     print('Training Finished Split: {}'. format(i+1))
     del trainloader
@@ -167,7 +167,7 @@ def train_model_CV(model_name, data, frcnn_cpu=False, splits = 5, epoches = 4, b
 
 def train_with_dev(model_name, datatrain, datadev, frcnn_cpu=False, epoches = 4, batch_size = 8,
                    max_length = 120, interm_layer_size = 64, lr = 1e-5,  decay=2e-5, 
-                   validation_rate=0.1, **kwargs):
+                   validation_rate=0.1, output='./logs', **kwargs):
 
 
   params = {'max_edge': 600, 'min_edge': 400, 'min_boxes':10, 'max_boxes':100}
@@ -188,7 +188,7 @@ def train_with_dev(model_name, datatrain, datadev, frcnn_cpu=False, epoches = 4,
   trainloader = DataLoader(MultimodalData(datatrain['text'], datatrain['images'], datatrain['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
   devloader = DataLoader(MultimodalData(datadev['text'], datadev['images'], datadev['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 
-  history = [train_model(model_name, model, trainloader, devloader, epoches, lr, decay)]
+  history = [train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output)]
   
   del trainloader
   del model

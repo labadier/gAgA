@@ -68,8 +68,10 @@ if __name__ == '__main__':
 
     if phase == 'train':
 
-      if os.path.exists('./logs') == False:
-        os.system('mkdir logs')
+      output = os.path.join(output, 'logs')
+
+      if os.path.exists(output) == False:
+        os.system(f'mkdir {output}')
 
       images_path, text, labels = load_data(data_path, tf, True)
       data = {'text':text, 'images':images_path, 'labels':labels}
@@ -79,16 +81,16 @@ if __name__ == '__main__':
         datadev = {'text':dtext, 'images':dimages_path, 'labels':dlabels}
         history = train_with_dev(arch, datatrain=data, datadev=datadev, frcnn_cpu=False, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
-                            lr = learning_rate, decay=decay, validation_rate=val_rate, max_edge = max_edge, 
+                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, max_edge = max_edge, 
                             min_edge = min_edge, min_boxes = min_boxes, max_boxes = max_boxes)
       else:
         history = train_model_CV(arch, data, frcnn_cpu=False, splits = splits, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
-                            lr = learning_rate,  decay=decay, max_edge = max_edge, 
+                            lr = learning_rate,  decay=decay, output=output, max_edge = max_edge, 
                             min_edge = min_edge, min_boxes = min_boxes, max_boxes = max_boxes)
       
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
-      plot_training(history[-1], arch, 'acc')
+      plot_training(history[-1], arch, output, 'acc')
       exit(0)
 
     if phase == 'eval':

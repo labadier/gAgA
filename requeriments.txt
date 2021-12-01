@@ -1,4 +1,5 @@
 transformers
+sklearn
 opencv-python
 wget
 torchvision

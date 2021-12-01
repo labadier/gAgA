@@ -40,7 +40,7 @@ def compute_eta(eta):
   return' ETA: {}{}:{}{}:{}{}'.format('0'*(1 - int(math.log10(h + 0.99))), h, '0'*(1 - int(math.log10(m+1+ 0.99))), m, '0'*(1 - int(math.log10(s+0.99))), s)
         
 
-def plot_training(history, model, measure='loss'):
+def plot_training(history, model, output, measure='loss'):
     
     plotdev = 'dev_' + measure
 
@@ -58,7 +58,7 @@ def plot_training(history, model, measure='loss'):
     if os.path.exists('./logs') == False:
         os.system('mkdir logs')
 
-    plt.savefig(f'./logs/train_history_{model}.png')
+    plt.savefig(os.path.join(output, f'train_history_{model}.png'))
 
 if __name__=="__main__":
     pass

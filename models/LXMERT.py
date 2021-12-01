@@ -64,6 +64,4 @@ class LXMERT(torch.nn.Module):
     self.load_state_dict(torch.load(path, map_location=self.device))
 
   def save(self, path):
-    if os.path.exists('./logs') == False:
-      os.system('mkdir logs')
-    torch.save(self.state_dict(), os.path.join('logs', path))
+    torch.save(self.state_dict(), path)
