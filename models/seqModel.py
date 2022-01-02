@@ -16,8 +16,8 @@ def HuggTransformer(model):
     model = AutoModel.from_pretrained("vinai/bertweet-base")
     tokenizer = AutoTokenizer.from_pretrained("vinai/bertweet-base", do_lower_case=False, TOKENIZERS_PARALLELISM=True)
   elif model == "deberta":
-    model = AutoModel.from_pretrained("microsoft/deberta-v2-xlarge")
-    tokenizer = AutoTokenizer.from_pretrained( "microsoft/deberta-v2-xlarge", do_lower_case=False, TOKENIZERS_PARALLELISM=True)
+    model = AutoModel.from_pretrained("microsoft/deberta-base")
+    tokenizer = AutoTokenizer.from_pretrained( "microsoft/deberta-base", do_lower_case=False, TOKENIZERS_PARALLELISM=True)
 
   return model, tokenizer
 
