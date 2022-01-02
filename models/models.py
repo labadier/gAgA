@@ -2,6 +2,7 @@ from numpy.random import f
 import torch, pandas, numpy as np, os, math
 from models.LXMERT import LXMERT
 from models.VisualBERT import VisualBERT
+from models.seqModel import SeqModel
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score, fbeta_score
 from sklearn.model_selection import StratifiedKFold
@@ -11,7 +12,7 @@ import time
 import random
 
 VISUAL_MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT}
-MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT}
+MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT, 'deberta': SeqModel, 'bertweet': SeqModel}
 
 def seed_worker(worker_id):
   worker_seed = torch.initial_seed() % 2**32
@@ -19,10 +20,9 @@ def seed_worker(worker_id):
   random.seed(worker_seed)
 
 class MultimodalData(Dataset):
-  def __init__(self, text, images, label=None):
+  def __init__(self, data, label=None):
 
-    self.text = text
-    self.images = images
+    self.data = data
     self.label = label
 
   def __len__(self):
@@ -33,18 +33,20 @@ class MultimodalData(Dataset):
     if torch.is_tensor(idx):
       idx = idx.tolist()
 
-    text  = self.text[idx] 
-    images = self.images[idx]
+    ret = {}
+    for i in self.data.keys():
+      ret[i] = self.data[i][idx]
+
     if self.label is not None:
-      labels = self.label[idx]
-      return {'text': text, 'images': images, 'labels':labels}
-    return {'text': text, 'images': images}
+      ret['labels'] = self.label[idx]
+
+    return ret
 
 def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, split=1):
   
   eloss, eacc, edev_loss, edev_acc = [], [], [], []
   
-  optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=decay)
+  optimizer = model.makeOptimizer(lr=lr, decay=decay)
   batches = len(trainloader)
 
   for epoch in range(epoches):
@@ -60,10 +62,10 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
     for j, data in enumerate(trainloader, 0):
 
       torch.cuda.empty_cache()         
-      text, images, labels = data['text'], data['images'], data['labels'].to(model.device)      
+      labels = data['labels'].to(model.device)      
       
       optimizer.zero_grad()
-      outputs = model(text, images)
+      outputs = model(data)
       loss = model.loss_criterion(outputs, labels)
       
       loss.backward()
@@ -92,9 +94,9 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
       log = None
       for k, data in enumerate(devloader, 0):
         torch.cuda.empty_cache() 
-        text, images, labels = data['text'], data['images'], data['labels'].to(model.device) 
+        labels = data['labels'].to(model.device) 
 
-        dev_out = model(text, images)
+        dev_out = model(data)
         if k == 0:
           out = dev_out
           log = labels
@@ -123,7 +125,7 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
   return {'loss': eloss, 'acc': eacc, 'dev_loss': edev_loss, 'dev_acc': edev_acc}
 
 
-def train_model_CV(model_name, data, frcnn_cpu=False, splits = 5, epoches = 4, batch_size = 8, max_length = 120, 
+def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, max_length = 120, 
                     interm_layer_size = 64, lr = 1e-5,  decay=2e-5, output='./logs', **kwargs):
 
   '''
@@ -153,8 +155,16 @@ def train_model_CV(model_name, data, frcnn_cpu=False, splits = 5, epoches = 4, b
     history.append({'loss': [], 'acc':[], 'dev_loss': [], 'dev_acc': []})
     model = MODELS[model_name](interm_layer_size, max_length, **params)
     
-    trainloader = DataLoader(MultimodalData(data['text'][train_index], data['images'][train_index], data['labels'][train_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
-    devloader = DataLoader(MultimodalData(data['text'][test_index], data['images'][test_index], data['labels'][test_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
+    datatrain = {}
+    datadev = {}
+
+    for i in data.keys():
+      if i != 'labels':
+        datatrain[i] = data[i][train_index]
+        datadev[i] = data[i][test_index]
+
+    trainloader = DataLoader(MultimodalData(datatrain, data['labels'][train_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
+    devloader = DataLoader(MultimodalData(datadev, data['labels'][test_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 
     history.append(train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, i+1))
       
@@ -165,7 +175,7 @@ def train_model_CV(model_name, data, frcnn_cpu=False, splits = 5, epoches = 4, b
     break
   return history
 
-def train_with_dev(model_name, datatrain, datadev, frcnn_cpu=False, epoches = 4, batch_size = 8,
+def train_with_dev(model_name, datatrain, datadev, epoches = 4, batch_size = 8,
                    max_length = 120, interm_layer_size = 64, lr = 1e-5,  decay=2e-5, 
                    validation_rate=0.1, output='./logs', **kwargs):
 
@@ -178,15 +188,26 @@ def train_with_dev(model_name, datatrain, datadev, frcnn_cpu=False, epoches = 4,
   if model_name == 'VisualBERT' and kwargs['min_boxes'] != None:
     params.update({'min_boxes':kwargs['min_boxes'], 'max_boxes':kwargs['max_boxes']})
 
+  if model_name not in VISUAL_MODELS.keys():
+    params.update({'model':model_name, 'mode':kwargs['mode']})
+
   if datadev == {} and validation_rate != 0:
     ttrain, ttest, itrain, itest, ltrain,ltest = train_test_split(datatrain["text"], datatrain["images"], datatrain["labels"], test_size=validation_rate, stratify=datatrain["labels"].to_numpy())
     datatrain = {"text":ttrain,'images':itrain,'labels':ltrain}
     datadev = {"text":ttest,'images':itest,'labels':ltest}
 
   model = MODELS[model_name](interm_layer_size, max_length, **params)
+  train = {}
+  dev = {}
 
-  trainloader = DataLoader(MultimodalData(datatrain['text'], datatrain['images'], datatrain['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
-  devloader = DataLoader(MultimodalData(datadev['text'], datadev['images'], datadev['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
+  for i in datatrain.keys():
+    if i != 'labels':
+      train[i] = datatrain[i]
+      dev[i] = datadev[i]
+
+
+  trainloader = DataLoader(MultimodalData(train, datatrain['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
+  devloader = DataLoader(MultimodalData(dev, datadev['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 
   history = [train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output)]
   
@@ -197,14 +218,13 @@ def train_with_dev(model_name, datatrain, datadev, frcnn_cpu=False, epoches = 4,
 
 
 def predict(model_name, model, data, batch_size, output, images_path, split = 1):
-  devloader = DataLoader(MultimodalData(data['text'], data['images']), batch_size=batch_size, shuffle=False, num_workers=4, worker_init_fn=seed_worker)
+  devloader = DataLoader(MultimodalData(data), batch_size=batch_size, shuffle=False, num_workers=4, worker_init_fn=seed_worker)
   model.eval()
   model.load(f'logs/{model_name}_split_{split}.pt')
   with torch.no_grad():
     out = None
-    for k, data in enumerate(devloader, 0):
-      text, images = data['text'], data['images']     
-      dev_out = model(text, images)
+    for k, data in enumerate(devloader, 0):   
+      dev_out = model(data)
       if k == 0:
           out = dev_out
       else:  out = torch.cat((out, dev_out), 0)

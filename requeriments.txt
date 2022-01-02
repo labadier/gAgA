@@ -1,4 +1,5 @@
 transformers
+sentencepiece
 sklearn
 opencv-python
 wget

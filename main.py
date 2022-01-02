@@ -34,6 +34,7 @@ def check_params(args=None):
   parser.add_argument('-tf', metavar='train_file', help='Data Anotation Files for Training')
   parser.add_argument('-df', metavar='dev_file', help='Data Anotation Files for Development', default=None)
   parser.add_argument('-gf', metavar='test_file', help='Data Anotation Files for Testing')
+  parser.add_argument('-tm', metavar='training_mode', default=params.TRAIN_MODE, help='Weights Update mode', choices=['dynamic', 'static'])
 
   return parser.parse_args(args)
 
@@ -62,6 +63,7 @@ if __name__ == '__main__':
   min_boxes = parameters.min_boxes
   max_boxes =  parameters.max_boxes
   modeltype = parameters.modeltype
+  training_mode = parameters.tm
   # textF, imageF, labelF ="preprotext", "images","irony"
   
   if modeltype == 'multimodal':
@@ -79,12 +81,12 @@ if __name__ == '__main__':
       if df != None:
         dimages_path, dtext, dlabels = load_data(data_path, df, True)#, imageF, textF, labelF)
         datadev = {'text':dtext, 'images':dimages_path, 'labels':dlabels}
-        history = train_with_dev(arch, datatrain=data, datadev=datadev, frcnn_cpu=False, epoches = epoches, 
+        history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
                             lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, max_edge = max_edge, 
                             min_edge = min_edge, min_boxes = min_boxes, max_boxes = max_boxes)
       else:
-        history = train_model_CV(arch, data, frcnn_cpu=False, splits = splits, epoches = epoches, 
+        history = train_model_CV(arch, data, splits = splits, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
                             lr = learning_rate,  decay=decay, output=output, max_edge = max_edge, 
                             min_edge = min_edge, min_boxes = min_boxes, max_boxes = max_boxes)
@@ -105,3 +107,29 @@ if __name__ == '__main__':
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     exit(0)
   
+  if modeltype == 'text':
+
+    if phase == 'train':
+
+      output = os.path.join(output, 'logs')
+
+      if os.path.exists(output) == False:
+        os.system(f'mkdir {output}')
+
+      _, text, labels = load_data(data_path, tf, True)
+      data = {'text':text, 'labels':labels}
+      
+      if df != None:
+        _, dtext, dlabels = load_data(data_path, df, True)
+        datadev = {'text':dtext, 'labels':dlabels}
+        history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
+                            batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
+                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, mode=training_mode)
+      else:
+        history = train_model_CV(arch, data, splits = splits, epoches = epoches, 
+                            batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
+                            lr = learning_rate,  decay=decay, output=output, mode=training_mode)
+      
+      print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
+      plot_training(history[-1], arch, output, 'acc')
+      exit(0)

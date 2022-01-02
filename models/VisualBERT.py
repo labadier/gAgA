@@ -188,14 +188,14 @@ class VisualBERT(torch.nn.Module):
     return ret
 
 
-  def forward(self, text, images_path):
+  def forward(self, data):
     
     self.FPN.eval()
     self.frcnn.eval()
-    P = [cv2.cvtColor(cv2.imread(x), cv2.COLOR_RGB2BGR) for x in images_path]
+    P = [cv2.cvtColor(cv2.imread(x), cv2.COLOR_RGB2BGR) for x in data['images']]
     visual_embeds = torch.stack([self.get_image_features([p])[0] for p in P]) 
 
-    text = self.tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=self.max_length).to(self.device)
+    text = self.tokenizer(data['text'], return_tensors="pt", truncation=True, padding=True, max_length=self.max_length).to(self.device)
     
     visual_token_type_ids = torch.ones(visual_embeds.shape[:-1], dtype=torch.long)
     visual_attention_mask = torch.ones(visual_embeds.shape[:-1], dtype=torch.float)
@@ -213,3 +213,6 @@ class VisualBERT(torch.nn.Module):
 
   def save(self, path):
     torch.save(self.state_dict(), path)
+
+  def makeOptimizer(self, lr, decay):
+    torch.optim.Adam(self.parameters(), lr=lr, weight_decay=decay)

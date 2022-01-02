@@ -1,3 +1,4 @@
+from _typeshed import Self
 import torch, os
 from transformers import LxmertTokenizer, LxmertModel
 from lxmert.processing_image import Preprocess
@@ -38,11 +39,10 @@ class LXMERT(torch.nn.Module):
     if self.fcrnn_cpu == True:
       self.frcnn.to(device='cpu')
 
+  def forward(self, data):
 
-  def forward(self, text, images_path):
-
-    text = self.tokenizer(text, return_tensors='pt', truncation=True, padding=True, max_length=self.max_length).to(device=self.device)
-    images, sizes, scales_yx = self.image_preprocess(images_path, single_image=False)
+    text = self.tokenizer(data['text'], return_tensors='pt', truncation=True, padding=True, max_length=self.max_length).to(device=self.device)
+    images, sizes, scales_yx = self.image_preprocess(data['images'], single_image=False)
     
     self.frcnn.eval()
     # print(self.frcnn.device, images.device, sizes.device, scales_yx.device)
@@ -65,3 +65,6 @@ class LXMERT(torch.nn.Module):
 
   def save(self, path):
     torch.save(self.state_dict(), path)
+
+  def makeOptimizer(self, lr, decay):
+    torch.optim.Adam(self.parameters(), lr=lr, weight_decay=decay)
