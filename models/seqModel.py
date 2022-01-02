@@ -44,9 +44,9 @@ class SeqModel(torch.nn.Module):
     self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     self.to(device=self.device)
 
-  def forward(self, X, get_encoding=False):
+  def forward(self, data, get_encoding=False):
 
-    ids = self.tokenizer(X, return_tensors='pt', truncation=True, padding=True, max_length=self.max_length).to(device=self.device)
+    ids = self.tokenizer(data['text'], return_tensors='pt', truncation=True, padding=True, max_length=self.max_length).to(device=self.device)
 
     X = self.transformer(**ids)[0]
 

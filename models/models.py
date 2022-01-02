@@ -26,7 +26,7 @@ class MultimodalData(Dataset):
     self.label = label
 
   def __len__(self):
-    return self.text.shape[0]
+    return self.label.shape[0]
 
   def __getitem__(self, idx):
 
@@ -146,6 +146,9 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
 
   if model_name == 'VisualBERT' and kwargs['min_boxes'] != None:
     params.update({'min_boxes':kwargs['min_boxes'], 'max_boxes':kwargs['max_boxes']})
+  
+  if model_name not in VISUAL_MODELS.keys():
+    params.update({'model':model_name, 'mode':kwargs['mode']})
 
   history = []
   skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state = 23)
@@ -158,10 +161,10 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
     datatrain = {}
     datadev = {}
 
-    for i in data.keys():
-      if i != 'labels':
-        datatrain[i] = data[i][train_index]
-        datadev[i] = data[i][test_index]
+    for j in data.keys():
+      if j != 'labels':
+        datatrain[j] = data[j][train_index]
+        datadev[j] = data[j][test_index]
 
     trainloader = DataLoader(MultimodalData(datatrain, data['labels'][train_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
     devloader = DataLoader(MultimodalData(datadev, data['labels'][test_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
@@ -200,10 +203,10 @@ def train_with_dev(model_name, datatrain, datadev, epoches = 4, batch_size = 8,
   train = {}
   dev = {}
 
-  for i in datatrain.keys():
-    if i != 'labels':
-      train[i] = datatrain[i]
-      dev[i] = datadev[i]
+  for j in datatrain.keys():
+    if j != 'labels':
+      train[j] = datatrain[j]
+      dev[j] = datadev[j]
 
 
   trainloader = DataLoader(MultimodalData(train, datatrain['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)

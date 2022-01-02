@@ -1,4 +1,3 @@
-from _typeshed import Self
 import torch, os
 from transformers import LxmertTokenizer, LxmertModel
 from lxmert.processing_image import Preprocess
