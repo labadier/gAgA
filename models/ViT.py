@@ -1,38 +1,37 @@
-import torch, sys
+import torch, os, sys
 sys.path.append('../')
-from transformers import AutoTokenizer, AutoModel
-import random, numpy as np
+import numpy as np, pandas as pd
+from transformers import ViTFeatureExtractor, ViTModel
+from torch.utils.data import Dataset, DataLoader, dataloader
+from sklearn.model_selection import StratifiedKFold
+import random
 from utils import bcolors
 
 
 def HuggTransformer(model):
   
-  if model == "bertweet":
-    model = AutoModel.from_pretrained("vinai/bertweet-base")
-    tokenizer = AutoTokenizer.from_pretrained("vinai/bertweet-base", do_lower_case=False, TOKENIZERS_PARALLELISM=True)
-  elif model == "deberta":
-    model = AutoModel.from_pretrained("microsoft/deberta-base")
-    tokenizer = AutoTokenizer.from_pretrained( "microsoft/deberta-base", do_lower_case=False, TOKENIZERS_PARALLELISM=True)
+  if model == "vit":
+    model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+    feature_extractor = ViTFeatureExtractor.from_pretrained("google/vit-base-patch16-224-in21k")
+    
 
-  return model, tokenizer
+  return model, feature_extractor
 
 def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
   
-class SeqModel(torch.nn.Module):
+class ViT(torch.nn.Module):
 
   def __init__(self, interm_size, max_length, **kwargs):
 
-    super(SeqModel, self).__init__()
+    super(ViT, self).__init__()
 		
-    self.mode = kwargs['mode']
     self.model = kwargs['model']
     self.best_acc = None
-    self.max_length = max_length
     self.interm_neurons = interm_size
-    self.transformer, self.tokenizer = HuggTransformer(self.model)
+    self.ViTModel, self.feature_extractor = HuggTransformer(self.model)
     self.intermediate = torch.nn.Sequential(torch.nn.Dropout(p=0.5), torch.nn.Linear(in_features=768, out_features=self.interm_neurons), torch.nn.LeakyReLU())
     self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=2)
     self.loss_criterion = torch.nn.CrossEntropyLoss()
@@ -41,9 +40,9 @@ class SeqModel(torch.nn.Module):
 
   def forward(self, data, get_encoding=False):
 
-    ids = self.tokenizer(data['text'], return_tensors='pt', truncation=True, padding=True, max_length=self.max_length).to(device=self.device)
+    features = self.feature_extractor(data['image'].to(device=self.device), return_tensors='pt')
 
-    X = self.transformer(**ids)[0]
+    X = self.ViTModel(**features).pooler_output
 
     X = X[:,0]
     enc = self.intermediate(X)

@@ -1,4 +1,10 @@
 visualbert train 79, dev 81
 acc: 0.817 | dev_loss: 0.425 dev_acc: 0.812	[
 
+
+deberta  
+acc: 0.988 | dev_loss: 0.852 dev_acc: 0.797
+
+
+
 estudiar lo que es el emolex y simolex

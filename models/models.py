@@ -2,6 +2,7 @@ from numpy.random import f
 import torch, pandas, numpy as np, os, math
 from models.LXMERT import LXMERT
 from models.VisualBERT import VisualBERT
+from models.ViT import ViT
 from models.seqModel import SeqModel
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score, fbeta_score
@@ -12,7 +13,7 @@ import time
 import random
 
 VISUAL_MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT}
-MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT, 'deberta': SeqModel, 'bertweet': SeqModel}
+MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT, 'deberta': SeqModel, 'bertweet': SeqModel, 'vit':ViT}
 
 def seed_worker(worker_id):
   worker_seed = torch.initial_seed() % 2**32
