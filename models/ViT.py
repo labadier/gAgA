@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader, dataloader
 from sklearn.model_selection import StratifiedKFold
 import random
 from utils import bcolors
+from PIL import Image
 
 
 def HuggTransformer(model):
@@ -39,12 +40,11 @@ class ViT(torch.nn.Module):
     self.to(device=self.device)
 
   def forward(self, data, get_encoding=False):
-
-    features = self.feature_extractor(data['image'].to(device=self.device), return_tensors='pt')
+    
+    features = self.feature_extractor([Image.open(i) for i in data['image']], return_tensors='pt').to(device=self.device)
 
     X = self.ViTModel(**features).pooler_output
 
-    X = X[:,0]
     enc = self.intermediate(X)
     output = self.classifier(enc)
     if get_encoding == True:
@@ -60,24 +60,7 @@ class ViT(torch.nn.Module):
 
   def makeOptimizer(self, lr=1e-5, decay=2e-5, multiplier=1, increase=0.1):
 
-    if self.mode == 'static':
-      return torch.optim.Adam(self.parameters(), lr=lr, weight_decay=decay)
-
-    params = []
-    for l in self.transformer.encoder.layer:
-
-      params.append({'params':l.parameters(), 'lr':lr*multiplier}) 
-      multiplier += increase
-
-    try:
-      params.append({'params':self.transformer.pooler.parameters(), 'lr':lr*multiplier})
-    except:
-      print(f'{bcolors.WARNING}Warning: No Pooler layer found{bcolors.ENDC}')
-
-    params.append({'params':self.intermediate.parameters(), 'lr':lr*multiplier})
-    params.append({'params':self.classifier.parameters(), 'lr':lr*multiplier})
-
-    return torch.optim.RMSprop(params, lr=lr*multiplier, weight_decay=decay)
+    return torch.optim.Adam(self.parameters(), lr=lr, weight_decay=decay)
 
   # def get_encodings(self, text, batch_size):
 

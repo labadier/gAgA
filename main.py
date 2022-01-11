@@ -35,6 +35,7 @@ def check_params(args=None):
   parser.add_argument('-df', metavar='dev_file', help='Data Anotation Files for Development', default=None)
   parser.add_argument('-gf', metavar='test_file', help='Data Anotation Files for Testing')
   parser.add_argument('-tm', metavar='training_mode', default=params.TRAIN_MODE, help='Weights Update mode', choices=['dynamic', 'static'])
+  parser.add_argument('-wp', metavar='weigths_path', default=params.TRAIN_MODE, help='Saved Weights Path')
 
   return parser.parse_args(args)
 
@@ -64,6 +65,7 @@ if __name__ == '__main__':
   max_boxes =  parameters.max_boxes
   modeltype = parameters.modeltype
   training_mode = parameters.tm
+  weights_path = parameters.wp
   # textF, imageF, labelF ="preprotext", "images","irony"
   
   if modeltype == 'multimodal':
@@ -103,7 +105,7 @@ if __name__ == '__main__':
       params = {'max_edge': max_edge, 'min_edge': min_edge, 'min_boxes':min_boxes, 'max_boxes':max_boxes}
       model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
 
-      predict(arch, model, data, batch_size, output, images_path)
+      predict(arch, model, data, batch_size, output, images_path, weights_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     exit(0)
   
@@ -132,9 +134,21 @@ if __name__ == '__main__':
       
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
       plot_training(history[-1], arch, output, 'acc')
-      exit(0)
 
-  if modeltype == 'image':
+    if phase == 'eval':
+    
+      images_path, text = load_data(data_path, gf, labeled = False)
+      data = {'text':text} 
+
+      params = {}
+      model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
+
+      predict(arch, model, data, batch_size, output, images_path, weights_path)
+      print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
+    
+    exit(0)
+
+  if modeltype == 'images':
 
     if phase == 'train':
 
@@ -143,12 +157,12 @@ if __name__ == '__main__':
       if os.path.exists(output) == False:
         os.system(f'mkdir {output}')
 
-      images_path, _, labels = load_data(data_path, tf, True)
-      data = {'image':images_path, 'labels':labels}
+      images_path, text, labels = load_data(data_path, tf, True)
+      data = {'text':text, 'image':images_path, 'labels':labels}
       
       if df != None:
-        dimages_path, _, dlabels = load_data(data_path, df, True)
-        datadev = {'image':dimages_path, 'labels':dlabels}
+        dimages_path, dtext, dlabels = load_data(data_path, df, True)
+        datadev = {'text':dtext, 'image':dimages_path, 'labels':dlabels}
         history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
                             lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, mode=training_mode)
@@ -159,4 +173,16 @@ if __name__ == '__main__':
       
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
       plot_training(history[-1], arch, output, 'acc')
-      exit(0)
+    
+    if phase == 'eval':
+    
+      images_path, text = load_data(data_path, gf, labeled = False)
+      data = {'images':images_path} 
+
+      params = {}
+      model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
+
+      predict(arch, model, data, batch_size, output, images_path, weights_path)
+      print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
+    
+    exit(0)

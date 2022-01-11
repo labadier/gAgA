@@ -27,6 +27,8 @@ class MultimodalData(Dataset):
     self.label = label
 
   def __len__(self):
+    for i in self.data.keys():
+      return self.data[i].shape[0]
     return self.label.shape[0]
 
   def __getitem__(self, idx):
@@ -221,10 +223,10 @@ def train_with_dev(model_name, datatrain, datadev, epoches = 4, batch_size = 8,
   return history
 
 
-def predict(model_name, model, data, batch_size, output, images_path, split = 1):
+def predict(model_name, model, data, batch_size, output, images_path, wp, split = 1):
   devloader = DataLoader(MultimodalData(data), batch_size=batch_size, shuffle=False, num_workers=4, worker_init_fn=seed_worker)
   model.eval()
-  model.load(f'logs/{model_name}_split_{split}.pt')
+  model.load(os.path.join(wp, f'{model_name}_split_{split}.pt'))
   with torch.no_grad():
     out = None
     for k, data in enumerate(devloader, 0):   
@@ -239,4 +241,4 @@ def predict(model_name, model, data, batch_size, output, images_path, split = 1)
 
   dictionary = {'id': np.array([i.split('/')[-1] for i in images_path]),  'misogynous':y_hat}  
   df = pandas.DataFrame(dictionary) 
-  df.to_csv(os.path.join(output, 'preds.csv'))
+  df.to_csv(os.path.join(output, 'preds.csv'), sep='\t', index=False, header=False)
