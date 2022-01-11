@@ -133,3 +133,30 @@ if __name__ == '__main__':
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
       plot_training(history[-1], arch, output, 'acc')
       exit(0)
+
+  if modeltype == 'image':
+
+    if phase == 'train':
+
+      output = os.path.join(output, 'logs')
+
+      if os.path.exists(output) == False:
+        os.system(f'mkdir {output}')
+
+      images_path, _, labels = load_data(data_path, tf, True)
+      data = {'image':images_path, 'labels':labels}
+      
+      if df != None:
+        dimages_path, _, dlabels = load_data(data_path, df, True)
+        datadev = {'image':dimages_path, 'labels':dlabels}
+        history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
+                            batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
+                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, mode=training_mode)
+      else:
+        history = train_model_CV(arch, data, splits = splits, epoches = epoches, 
+                            batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
+                            lr = learning_rate,  decay=decay, output=output, mode=training_mode)
+      
+      print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
+      plot_training(history[-1], arch, output, 'acc')
+      exit(0)
