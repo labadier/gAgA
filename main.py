@@ -67,7 +67,7 @@ if __name__ == '__main__':
   modeltype = parameters.modeltype
   training_mode = parameters.tm
   weights_path = parameters.wp
-  multitask = (parameters.mtl == 'mlt')
+  multitask = (parameters.mtl == 'mtl')
   # textF, imageF, labelF ="preprotext", "images","irony"
   
   if modeltype == 'multimodal':
@@ -79,7 +79,7 @@ if __name__ == '__main__':
       if os.path.exists(output) == False:
         os.system(f'mkdir {output}')
 
-      images_path, text, labels = load_data(data_path, tf, True)
+      images_path, text, labels = load_data(data_path, tf, True, multitask=multitask)
       data = {'text':text, 'images':images_path, 'labels':labels}
       
       if df != None:
@@ -101,13 +101,13 @@ if __name__ == '__main__':
 
     if phase == 'eval':
       
-      images_path, text = load_data(data_path, gf, labeled = False)
+      images_path, text = load_data(data_path, gf, labeled = False, multitask=multitask)
       data = {'text':text, 'images':images_path} 
 
       params = {'max_edge': max_edge, 'min_edge': min_edge, 'min_boxes':min_boxes, 'max_boxes':max_boxes}
       model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
 
-      predict(arch, model, data, batch_size, output, images_path, weights_path)
+      predict(arch, model, data, batch_size, output, images_path, weights_path, multitask=multitask)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     exit(0)
   
@@ -120,11 +120,11 @@ if __name__ == '__main__':
       if os.path.exists(output) == False:
         os.system(f'mkdir {output}')
 
-      _, text, labels = load_data(data_path, tf, True)
+      _, text, labels = load_data(data_path, tf, True, multitask=multitask)
       data = {'text':text, 'labels':labels}
       
       if df != None:
-        _, dtext, dlabels = load_data(data_path, df, True)
+        _, dtext, dlabels = load_data(data_path, df, True, multitask=multitask)
         datadev = {'text':dtext, 'labels':dlabels}
         history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
@@ -139,13 +139,15 @@ if __name__ == '__main__':
 
     if phase == 'eval':
     
-      images_path, text = load_data(data_path, gf, labeled = False)
+      images_path, text = load_data(data_path, gf, labeled = False, multitask=multitask)
       data = {'text':text} 
 
-      params = {'model':arch, 'mode':'static'}
+      params = {'model':arch, 'mode':'static', 'multitask':multitask}
       model = MODELS[arch](interm_layer_size, max_length, **params)
 
-      predict(arch, model, data, batch_size, output, images_path, weights_path)
+      predict(arch, model, data, batch_size, output, images_path, weights_path,multitask=multitask)
+      save_encodings(arch, model, data, batch_size, output, images_path, weights_path)
+      
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     
     exit(0)
@@ -159,11 +161,11 @@ if __name__ == '__main__':
       if os.path.exists(output) == False:
         os.system(f'mkdir {output}')
 
-      images_path, text, labels = load_data(data_path, tf, True)
+      images_path, text, labels = load_data(data_path, tf, True, multitask=multitask)
       data = {'text':text, 'image':images_path, 'labels':labels}
       
       if df != None:
-        dimages_path, dtext, dlabels = load_data(data_path, df, True)
+        dimages_path, dtext, dlabels = load_data(data_path, df, True, multitask=multitask)
         datadev = {'text':dtext, 'image':dimages_path, 'labels':dlabels}
         history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
@@ -178,13 +180,13 @@ if __name__ == '__main__':
     
     if phase == 'eval':
     
-      images_path, text = load_data(data_path, gf, labeled = False)
+      images_path, text = load_data(data_path, gf, labeled = False, multitask=multitask)
       data = {'images':images_path} 
 
       params = {}
       model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
 
-      predict(arch, model, data, batch_size, output, images_path, weights_path)
+      predict(arch, model, data, batch_size, output, images_path, weights_path, multitask=multitask)
       save_encodings(arch, model, data, batch_size, output, images_path, weights_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     

@@ -46,18 +46,23 @@ class MultimodalData(Dataset):
 
     return ret
 
+def sigmoid( z ):
+  return 1./(1 + torch.exp(-z))
+
 def compute_acc(ground_truth, predictions, multitask):
 
   if multitask == False:
     return((1.0*(torch.max(predictions, 1).indices == ground_truth)).sum()/len(ground_truth)).cpu().numpy()
 
+  predictions = torch.where(sigmoid(predictions) > 0.5, 1, 0)
+
   acc = []
   for i in range(ground_truth.shape[1]):
-    acc.append( ((1.0*(predictions[:i] == ground_truth[:i])).sum()/ground_truth.shape[0]).cpu().numpy() )
+    acc.append( ((1.0*(predictions[:,i] == ground_truth[:,i])).sum()/ground_truth.shape[0]).cpu().numpy() )
   return np.array(acc)
 
 
-def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, multitask=False, split=1):
+def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, split=1, multitask=False):
   
   eloss, eacc, edev_loss, edev_acc = [], [], [], []
   
@@ -77,22 +82,22 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
     for j, data in enumerate(trainloader, 0):
 
       torch.cuda.empty_cache()         
-      labels = data['labels'].to(model.device)      
+      labels = data['labels'].to(model.device)     
       
       optimizer.zero_grad()
       outputs = model(data)
       loss = model.loss_criterion(outputs, labels)
-      
+   
       loss.backward()
       optimizer.step()
 
       # print statistics
       with torch.no_grad():
         if j == 0:
-          acc = compute_acc(labels, output, multitask)
+          acc = compute_acc(labels, outputs, multitask)
           running_loss = loss.item()
         else: 
-          acc = (acc + compute_acc(labels, output, multitask))/2.0
+          acc = (acc + compute_acc(labels, outputs, multitask))/2.0
           running_loss = (running_loss + loss.item())/2.0
 
       if (j+1)*100.0/batches - perc  >= 1 or j == batches-1:
@@ -160,7 +165,8 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
     min_boxes, max_boxes: mimimun and maximum amount of boxes to keep from the region proposal network
   '''
 
-  params = {'max_edge': 600, 'min_edge': 400, 'min_boxes':10, 'max_boxes':100}
+
+  params = {'max_edge': 600, 'min_edge': 400, 'min_boxes':10, 'max_boxes':100, 'multitask':multitask}
 
   if model_name in VISUAL_MODELS.keys() and kwargs['max_edge'] != None :
     params.update({'max_edge':kwargs['max_edge'], 'min_edge':kwargs['min_edge']})
@@ -174,7 +180,7 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
   history = []
   skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state = 23)
   
-  for i, (train_index, test_index) in enumerate(skf.split(data['text'], data['labels'])):  
+  for i, (train_index, test_index) in enumerate(skf.split(data['text'], data['labels'][:,0])):  
     
     history.append({'loss': [], 'acc':[], 'dev_loss': [], 'dev_acc': []})
     model = MODELS[model_name](interm_layer_size, max_length, **params)
@@ -204,7 +210,7 @@ def train_with_dev(model_name, datatrain, datadev, epoches = 4, batch_size = 8,
                    validation_rate=0.1, output='./logs', multitask=False, **kwargs):
 
 
-  params = {'max_edge': 600, 'min_edge': 400, 'min_boxes':10, 'max_boxes':100}
+  params = {'max_edge': 600, 'min_edge': 400, 'min_boxes':10, 'max_boxes':100, 'multitask':multitask}
 
   if model_name in VISUAL_MODELS.keys() and kwargs['max_edge'] != None :
     params.update({'max_edge':kwargs['max_edge'], 'min_edge':kwargs['min_edge']})
@@ -241,7 +247,7 @@ def train_with_dev(model_name, datatrain, datadev, epoches = 4, batch_size = 8,
   return history
 
 
-def predict(model_name, model, data, batch_size, output, images_path, wp, split = 1):
+def predict(model_name, model, data, batch_size, output, images_path, wp,  multitask = False, split = 1):
   devloader = DataLoader(MultimodalData(data), batch_size=batch_size, shuffle=False, num_workers=4, worker_init_fn=seed_worker)
   model.eval()
   model.load(os.path.join(wp, f'{model_name}_split_{split}.pt'))
@@ -252,14 +258,21 @@ def predict(model_name, model, data, batch_size, output, images_path, wp, split 
       if k == 0:
           out = dev_out
       else:  out = torch.cat((out, dev_out), 0)
-  y_hat = np.int32(np.round(torch.argmax(torch.nn.functional.softmax(out, dim=-1), axis=-1).cpu().numpy(), decimals=0))
-
+  
   if os.path.isdir(output) == False:
       os.system(f'mkdir {output}')
 
-  dictionary = {'id': np.array([i.split('/')[-1] for i in images_path]),  'misogynous':y_hat}  
-  df = pandas.DataFrame(dictionary) 
-  df.to_csv(os.path.join(output, 'preds.csv'), sep='\t', index=False, header=False)
+  if multitask == False:
+    y_hat = np.int32(np.round(torch.argmax(torch.nn.functional.softmax(out, dim=-1), axis=-1).cpu().numpy(), decimals=0))
+    dictionary = {'id': np.array([i.split('/')[-1] for i in images_path]),  'misogynous':y_hat}  
+    df = pandas.DataFrame(dictionary) 
+    df.to_csv(os.path.join(output, 'preds.csv'), sep='\t', index=False, header=False)
+  else:
+    y_hat = torch.where(sigmoid(out) > 0.5, 1, 0).cpu().numpy()
+    dictionary = {'id': np.array([i.split('/')[-1] for i in images_path]),  'misogynous':y_hat[:,0], 'shaming':y_hat[:,1],	'stereotype':y_hat[:,2], 'objectification':y_hat[:,3],	'violence': y_hat[:,4]}  
+    df = pandas.DataFrame(dictionary) 
+    df.to_csv(os.path.join(output, 'preds.csv'), sep='\t', index=False, header=False)
+
 
 
 
@@ -271,6 +284,7 @@ def save_encodings(model_name, model, data, batch_size, output, images_path, wp,
     out = None
     for k, data in enumerate(devloader, 0):   
       dev_out = model(data, get_encoding=True)
+      
       if k == 0:
           out = dev_out
       else:  out = torch.cat((out, dev_out), 0)

@@ -49,7 +49,7 @@ class SeqModel(torch.nn.Module):
     self.transformer, self.tokenizer = HuggTransformer(self.model)
     self.intermediate = torch.nn.Sequential(torch.nn.Dropout(p=0.5), torch.nn.Linear(in_features=768, out_features=self.interm_neurons), torch.nn.LeakyReLU())
     
-    if kwargs['multimodal'] == True:
+    if kwargs['multitask'] == True:
       self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=5)
       self.loss_criterion = MultiTaskLoss()
     else: 
@@ -69,7 +69,7 @@ class SeqModel(torch.nn.Module):
     enc = self.intermediate(X)
     output = self.classifier(enc)
     if get_encoding == True:
-      return enc, output
+      return enc
 
     return output 
 

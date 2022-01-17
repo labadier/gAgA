@@ -11,6 +11,7 @@ from detectron2 import model_zoo
 from detectron2.config import get_cfg
 from transformers import BertTokenizer, VisualBertModel
 import torch.nn.functional as F
+from models.seqModel import MultiTaskLoss
 
 class VisualBERT(torch.nn.Module):
 
@@ -57,8 +58,14 @@ class VisualBERT(torch.nn.Module):
     self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     
     self.intermediate = torch.nn.Sequential(torch.nn.Linear(in_features=768, out_features=self.interm_neurons), torch.nn.LeakyReLU())
-    self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=2)
-    self.loss_criterion = torch.nn.CrossEntropyLoss()
+
+    if kwargs['multitask'] == True:
+      self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=5)
+      self.loss_criterion = MultiTaskLoss()
+    else: 
+      self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=2)
+      self.loss_criterion = torch.nn.CrossEntropyLoss()
+
     
     self.to(device=self.device)
 
@@ -219,4 +226,4 @@ class VisualBERT(torch.nn.Module):
     torch.save(self.state_dict(), path)
 
   def makeOptimizer(self, lr, decay):
-    torch.optim.Adam(self.parameters(), lr=lr, weight_decay=decay)
+    return torch.optim.Adam(self.parameters(), lr=lr, weight_decay=decay)
