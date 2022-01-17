@@ -11,4 +11,4 @@ VAL_RATE = 0.1
 MIN_BOXES = 10
 TRAIN_MODE = 'dynamic'
 MAX_BOXES = 100
-
+MULTITASK = 'mlt'

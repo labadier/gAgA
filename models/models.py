@@ -1,3 +1,4 @@
+from cProfile import label
 from numpy.random import f
 import torch, pandas, numpy as np, os, math
 from models.LXMERT import LXMERT
@@ -45,7 +46,18 @@ class MultimodalData(Dataset):
 
     return ret
 
-def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, split=1):
+def compute_acc(ground_truth, predictions, multitask):
+
+  if multitask == False:
+    return((1.0*(torch.max(predictions, 1).indices == ground_truth)).sum()/len(ground_truth)).cpu().numpy()
+
+  acc = []
+  for i in range(ground_truth.shape[1]):
+    acc.append( ((1.0*(predictions[:i] == ground_truth[:i])).sum()/ground_truth.shape[0]).cpu().numpy() )
+  return np.array(acc)
+
+
+def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, multitask=False, split=1):
   
   eloss, eacc, edev_loss, edev_acc = [], [], [], []
   
@@ -77,10 +89,10 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
       # print statistics
       with torch.no_grad():
         if j == 0:
-          acc = ((1.0*(torch.max(outputs, 1).indices == labels)).sum()/len(labels)).cpu().numpy()
+          acc = compute_acc(labels, output, multitask)
           running_loss = loss.item()
         else: 
-          acc = (acc + ((1.0*(torch.max(outputs, 1).indices == labels)).sum()/len(labels)).cpu().numpy())/2.0
+          acc = (acc + compute_acc(labels, output, multitask))/2.0
           running_loss = (running_loss + loss.item())/2.0
 
       if (j+1)*100.0/batches - perc  >= 1 or j == batches-1:
@@ -108,18 +120,24 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
           log = torch.cat((log, labels), 0)
 
       dev_loss = model.loss_criterion(out, log).item()
-      dev_acc = ((1.0*(torch.max(out, 1).indices == log)).sum()/len(log)).cpu().numpy() 
+      dev_acc = compute_acc(log, out, multitask)
       eacc.append(acc)
       edev_loss.append(dev_loss)
       edev_acc.append(dev_acc) 
 
     band = False
-    if model.best_acc is None or model.best_acc < dev_acc:
+
+    measure = dev_acc
+    if multitask == True:
+      measure = dev_acc[0]
+
+    if model.best_acc is None or model.best_acc < measure:
       model.save(os.path.join(output, f'{model_name}_split_{split}.pt'))
-      model.best_acc = dev_acc
+      model.best_acc = measure
       band = True
 
-    ep_finish_print = f' acc: {acc:.3f} | dev_loss: {dev_loss:.3f} dev_acc: {dev_acc.reshape(-1)[0]:.3f}'
+    # ep_finish_print = f' acc: {acc:.3f} | dev_loss: {dev_loss:.3f} dev_acc: {dev_acc.reshape(-1)[0]:.3f}'
+    ep_finish_print = f' acc: {acc} | dev_loss: {dev_loss:.3f} dev_acc: {dev_acc.reshape(-1)}'
 
     if band == True:
       print(bcolors.OKBLUE + bcolors.BOLD + last_printed + ep_finish_print + '\t[Weights Updated]' + bcolors.ENDC)
@@ -129,7 +147,7 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
 
 
 def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, max_length = 120, 
-                    interm_layer_size = 64, lr = 1e-5,  decay=2e-5, output='./logs', **kwargs):
+                    interm_layer_size = 64, lr = 1e-5,  decay=2e-5, output='./logs', multitask=False, **kwargs):
 
   '''
     kwargs:
@@ -172,7 +190,7 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
     trainloader = DataLoader(MultimodalData(datatrain, data['labels'][train_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
     devloader = DataLoader(MultimodalData(datadev, data['labels'][test_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 
-    history.append(train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, i+1))
+    history.append(train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, i+1, multitask=multitask))
       
     print('Training Finished Split: {}'. format(i+1))
     del trainloader
@@ -183,7 +201,7 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
 
 def train_with_dev(model_name, datatrain, datadev, epoches = 4, batch_size = 8,
                    max_length = 120, interm_layer_size = 64, lr = 1e-5,  decay=2e-5, 
-                   validation_rate=0.1, output='./logs', **kwargs):
+                   validation_rate=0.1, output='./logs', multitask=False, **kwargs):
 
 
   params = {'max_edge': 600, 'min_edge': 400, 'min_boxes':10, 'max_boxes':100}
@@ -215,7 +233,7 @@ def train_with_dev(model_name, datatrain, datadev, epoches = 4, batch_size = 8,
   trainloader = DataLoader(MultimodalData(train, datatrain['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
   devloader = DataLoader(MultimodalData(dev, datadev['labels']), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 
-  history = [train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output)]
+  history = [train_model(model_name, model, trainloader, devloader, epoches, lr, decay, output, multitask=multitask)]
   
   del trainloader
   del model
@@ -242,3 +260,22 @@ def predict(model_name, model, data, batch_size, output, images_path, wp, split 
   dictionary = {'id': np.array([i.split('/')[-1] for i in images_path]),  'misogynous':y_hat}  
   df = pandas.DataFrame(dictionary) 
   df.to_csv(os.path.join(output, 'preds.csv'), sep='\t', index=False, header=False)
+
+
+
+def save_encodings(model_name, model, data, batch_size, output, images_path, wp, split = 1):
+  devloader = DataLoader(MultimodalData(data), batch_size=batch_size, shuffle=False, num_workers=4, worker_init_fn=seed_worker)
+  model.eval()
+  model.load(os.path.join(wp, f'{model_name}_split_{split}.pt'))
+  with torch.no_grad():
+    out = None
+    for k, data in enumerate(devloader, 0):   
+      dev_out = model(data, get_encoding=True)
+      if k == 0:
+          out = dev_out
+      else:  out = torch.cat((out, dev_out), 0)
+
+  if os.path.isdir(output) == False:
+      os.system(f'mkdir {output}')
+
+  torch.save(out, os.path.join(output, 'preds.pt'))

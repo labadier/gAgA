@@ -1,3 +1,4 @@
+from operator import truediv
 import pandas, numpy as np, os, math
 from matplotlib import pyplot as plt
 
@@ -12,21 +13,25 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def load_data(path, gold_file, labeled = True, imageField="file_name", textField="Text Transcription", labelField="misogynous"):
+def load_data(path, gold_file, labeled = True, multitask=False, imageField="file_name", textField="Text Transcription", labelField="misogynous"):
+
+  cols = [imageField, labelField, textField]
+  if multitask == True:
+    cols = [imageField, 'misogynous',	'shaming', 'stereotype',	'objectification',	'violence', textField]
 
   if labeled == True:
-    df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=[imageField, labelField, textField]).to_numpy()
+    df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=cols).to_numpy()
   else: df = pandas.read_csv(os.path.join(path, gold_file), sep='\t', usecols=[imageField, textField]).to_numpy()
   
   labels,text,images = [], [],[]
-  for i in range(len(df[:,0])):
-    pic = os.path.join(path, df[:,0][i])
+  for i in range(len(df)):
+    pic = os.path.join(path, df[i,0])
     
     if os.path.exists(pic):
       images.append(pic)
-      text.append(df[:,-1][i])
+      text.append(df[i,-1])
       if labeled == True:
-        labels.append(df[:,1][i])
+        labels.append(np.array([ df[i,j] for j in range(1, df.shape[1]-1)]))
   
   if labeled == True:
     return np.array(images), np.array(text), np.array(labels)

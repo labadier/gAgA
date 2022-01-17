@@ -1,7 +1,7 @@
 import argparse, sys, os, numpy as np, torch, random
 from models.LXMERT import LXMERT
 from models.VisualBERT import VisualBERT
-from models.models import train_model_CV, train_with_dev, predict
+from models.models import save_encodings, train_model_CV, train_with_dev, predict
 from models.models import VISUAL_MODELS, MODELS
 from utils import bcolors, load_data, plot_training
 import params
@@ -36,6 +36,7 @@ def check_params(args=None):
   parser.add_argument('-gf', metavar='test_file', help='Data Anotation Files for Testing')
   parser.add_argument('-tm', metavar='training_mode', default=params.TRAIN_MODE, help='Weights Update mode', choices=['dynamic', 'static'])
   parser.add_argument('-wp', metavar='weigths_path', default=params.TRAIN_MODE, help='Saved Weights Path')
+  parser.add_argument('-mtl', metavar='multitask', default=params.MULTITASK, help='Multitask Leatning')
 
   return parser.parse_args(args)
 
@@ -66,6 +67,7 @@ if __name__ == '__main__':
   modeltype = parameters.modeltype
   training_mode = parameters.tm
   weights_path = parameters.wp
+  multitask = (parameters.mtl == 'mlt')
   # textF, imageF, labelF ="preprotext", "images","irony"
   
   if modeltype == 'multimodal':
@@ -81,16 +83,16 @@ if __name__ == '__main__':
       data = {'text':text, 'images':images_path, 'labels':labels}
       
       if df != None:
-        dimages_path, dtext, dlabels = load_data(data_path, df, True)#, imageF, textF, labelF)
+        dimages_path, dtext, dlabels = load_data(data_path, df, True, multitask=multitask)#, imageF, textF, labelF)
         datadev = {'text':dtext, 'images':dimages_path, 'labels':dlabels}
         history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
-                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, max_edge = max_edge, 
+                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, multitask=multitask, max_edge = max_edge, 
                             min_edge = min_edge, min_boxes = min_boxes, max_boxes = max_boxes)
       else:
         history = train_model_CV(arch, data, splits = splits, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
-                            lr = learning_rate,  decay=decay, output=output, max_edge = max_edge, 
+                            lr = learning_rate,  decay=decay, output=output, multitask=multitask, max_edge = max_edge, 
                             min_edge = min_edge, min_boxes = min_boxes, max_boxes = max_boxes)
       
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
@@ -126,11 +128,11 @@ if __name__ == '__main__':
         datadev = {'text':dtext, 'labels':dlabels}
         history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
-                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, mode=training_mode)
+                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, mode=training_mode,multitask=multitask)
       else:
         history = train_model_CV(arch, data, splits = splits, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
-                            lr = learning_rate,  decay=decay, output=output, mode=training_mode)
+                            lr = learning_rate,  decay=decay, output=output, mode=training_mode, multitask=multitask)
       
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
       plot_training(history[-1], arch, output, 'acc')
@@ -140,8 +142,8 @@ if __name__ == '__main__':
       images_path, text = load_data(data_path, gf, labeled = False)
       data = {'text':text} 
 
-      params = {}
-      model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
+      params = {'model':arch, 'mode':'static'}
+      model = MODELS[arch](interm_layer_size, max_length, **params)
 
       predict(arch, model, data, batch_size, output, images_path, weights_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
@@ -183,6 +185,7 @@ if __name__ == '__main__':
       model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
 
       predict(arch, model, data, batch_size, output, images_path, weights_path)
+      save_encodings(arch, model, data, batch_size, output, images_path, weights_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     
     exit(0)

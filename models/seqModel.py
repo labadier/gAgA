@@ -1,3 +1,4 @@
+from tkinter.tix import Tree
 import torch, sys
 sys.path.append('../')
 from transformers import AutoTokenizer, AutoModel
@@ -20,6 +21,19 @@ def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+
+class MultiTaskLoss(torch.nn.Module):
+    def __init__(self):
+        super(MultiTaskLoss, self).__init__()
+
+    def sigmoid(self, z ):
+      return 1./(1 + torch.exp(-z))
+
+    def forward(self, outputs, labels):
+
+        outputs = self.sigmoid(outputs) 
+        outputs = -(labels*torch.log(outputs) + (1. - labels)*torch.log(1. - outputs))                     
+        return torch.sum(outputs)
   
 class SeqModel(torch.nn.Module):
 
@@ -34,8 +48,14 @@ class SeqModel(torch.nn.Module):
     self.interm_neurons = interm_size
     self.transformer, self.tokenizer = HuggTransformer(self.model)
     self.intermediate = torch.nn.Sequential(torch.nn.Dropout(p=0.5), torch.nn.Linear(in_features=768, out_features=self.interm_neurons), torch.nn.LeakyReLU())
-    self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=2)
-    self.loss_criterion = torch.nn.CrossEntropyLoss()
+    
+    if kwargs['multimodal'] == True:
+      self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=5)
+      self.loss_criterion = MultiTaskLoss()
+    else: 
+      self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=2)
+      self.loss_criterion = torch.nn.CrossEntropyLoss()
+    
     self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     self.to(device=self.device)
 

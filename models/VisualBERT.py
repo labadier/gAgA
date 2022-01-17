@@ -188,7 +188,7 @@ class VisualBERT(torch.nn.Module):
     return ret
 
 
-  def forward(self, data):
+  def forward(self, data, get_encoding=False):
     
     self.FPN.eval()
     self.frcnn.eval()
@@ -206,6 +206,10 @@ class VisualBERT(torch.nn.Module):
               return_dict = True).pooler_output
 
     Y = self.intermediate(outputs)
+
+    if get_encoding == True:
+      return Y
+
     return self.classifier(Y)
 
   def load(self, path):
