@@ -33,8 +33,12 @@ def load_data(path, gold_file, labeled = True, multitask=False, imageField="file
       if labeled == True:
         labels.append(np.array([ df[i,j] for j in range(1, df.shape[1]-1)]))
   
+  labels =  np.array(labels)
+  if labels.shape[-1] == 1: 
+    labels = labels.reshape(labels.shape[0],)
+
   if labeled == True:
-    return np.array(images), np.array(text), np.array(labels)
+    return np.array(images), np.array(text), labels
   return np.array(images), np.array(text)
 
 def compute_eta(eta):

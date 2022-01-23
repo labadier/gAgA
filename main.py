@@ -169,11 +169,13 @@ if __name__ == '__main__':
         datadev = {'text':dtext, 'image':dimages_path, 'labels':dlabels}
         history = train_with_dev(arch, datatrain=data, datadev=datadev, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
-                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, mode=training_mode)
+                            lr = learning_rate, decay=decay, output=output, validation_rate=val_rate, mode=training_mode, 
+                            multitask=multitask)
       else:
         history = train_model_CV(arch, data, splits = splits, epoches = epoches, 
                             batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
-                            lr = learning_rate,  decay=decay, output=output, mode=training_mode)
+                            lr = learning_rate,  decay=decay, output=output, mode=training_mode, 
+                            multitask=multitask)
       
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
       plot_training(history[-1], arch, output, 'acc')

@@ -7,6 +7,7 @@ from sklearn.model_selection import StratifiedKFold
 import random
 from utils import bcolors
 from PIL import Image
+from models.seqModel import MultiTaskLoss
 import cv2
 
 def HuggTransformer(model):
@@ -34,8 +35,14 @@ class ViT(torch.nn.Module):
     self.interm_neurons = interm_size
     self.ViTModel, self.feature_extractor = HuggTransformer(self.model)
     self.intermediate = torch.nn.Sequential(torch.nn.Dropout(p=0.5), torch.nn.Linear(in_features=768, out_features=self.interm_neurons), torch.nn.LeakyReLU())
-    self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=2)
-    self.loss_criterion = torch.nn.CrossEntropyLoss()
+    
+    if kwargs['multitask'] == True:
+      self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=5)
+      self.loss_criterion = MultiTaskLoss()
+    else:
+      self.classifier = torch.nn.Linear(in_features=self.interm_neurons, out_features=2)
+      self.loss_criterion = torch.nn.CrossEntropyLoss()
+
     self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     self.to(device=self.device)
 

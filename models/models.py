@@ -180,7 +180,13 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
   history = []
   skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state = 23)
   
-  for i, (train_index, test_index) in enumerate(skf.split(data['text'], data['labels'][:,0])):  
+  tmplb = None
+  if data['labels'].ndim == 1:
+    tmplb = data['labels']
+  else:
+    tmplb = data['labels'][:,0]
+
+  for i, (train_index, test_index) in enumerate(skf.split(data['text'], tmplb)):  
     
     history.append({'loss': [], 'acc':[], 'dev_loss': [], 'dev_acc': []})
     model = MODELS[model_name](interm_layer_size, max_length, **params)
@@ -192,7 +198,7 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
       if j != 'labels':
         datatrain[j] = data[j][train_index]
         datadev[j] = data[j][test_index]
-
+    
     trainloader = DataLoader(MultimodalData(datatrain, data['labels'][train_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
     devloader = DataLoader(MultimodalData(datadev, data['labels'][test_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 
