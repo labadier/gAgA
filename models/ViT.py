@@ -7,7 +7,7 @@ from sklearn.model_selection import StratifiedKFold
 import random
 from utils import bcolors
 from PIL import Image
-
+import cv2
 
 def HuggTransformer(model):
   
@@ -41,7 +41,7 @@ class ViT(torch.nn.Module):
 
   def forward(self, data, get_encoding=False):
     
-    features = self.feature_extractor([Image.open(i) for i in data['image']], return_tensors='pt').to(device=self.device)
+    features = self.feature_extractor([cv2.imread(i) for i in data['image']], return_tensors='pt').to(device=self.device)
 
     X = self.ViTModel(**features).pooler_output
 
@@ -61,29 +61,3 @@ class ViT(torch.nn.Module):
   def makeOptimizer(self, lr=1e-5, decay=2e-5, multiplier=1, increase=0.1):
 
     return torch.optim.Adam(self.parameters(), lr=lr, weight_decay=decay)
-
-  # def get_encodings(self, text, batch_size):
-
-  #   self.eval()    
-  #   text = pd.DataFrame({'tweets': text, 'label': np.zeros((len(text),))})
-  #   devloader = DataLoader(RawDataset(text, dataframe=True), batch_size=batch_size, shuffle=False, num_workers=4, worker_init_fn=seed_worker)
- 
-  #   with torch.no_grad():
-  #     out = None
-  #     log = None
-  #     for k, data in enumerate(devloader, 0):
-  #       torch.cuda.empty_cache() 
-  #       inputs = data['tweet']
-
-  #       dev_out, dev_log = self.forward(inputs, True)
-  #       if k == 0:
-  #         out = dev_out
-  #         log = dev_log
-  #       else: 
-  #         out = torch.cat((out, dev_out), 0)
-  #         log = torch.cat((log, dev_log), 0)
-
-  #   out = out.cpu().numpy()
-  #   log = torch.max(log, 1).indices.cpu().numpy() 
-  #   del devloader
-  #   return out, log

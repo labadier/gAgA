@@ -52,4 +52,4 @@ dictionary = {'id': [i[0] for i in images_path],  'misogynous':pred}
 df = pandas.DataFrame(dictionary) 
 df.to_csv('../preds.csv', sep='\t', index=False, header=False)
 
-# %%
+  # %%
