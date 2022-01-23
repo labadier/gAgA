@@ -55,7 +55,7 @@ class ViT(torch.nn.Module):
     enc = self.intermediate(X)
     output = self.classifier(enc)
     if get_encoding == True:
-      return enc, output
+      return enc
 
     return output 
 

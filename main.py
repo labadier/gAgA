@@ -104,7 +104,7 @@ if __name__ == '__main__':
       images_path, text = load_data(data_path, gf, labeled = False, multitask=multitask)
       data = {'text':text, 'images':images_path} 
 
-      params = {'max_edge': max_edge, 'min_edge': min_edge, 'min_boxes':min_boxes, 'max_boxes':max_boxes}
+      params = {'max_edge': max_edge, 'min_edge': min_edge, 'min_boxes':min_boxes, 'max_boxes':max_boxes, 'model':arch, 'mode':'static', 'multitask':multitask}
       model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
 
       predict(arch, model, data, batch_size, output, images_path, weights_path, multitask=multitask)
@@ -183,10 +183,10 @@ if __name__ == '__main__':
     if phase == 'eval':
     
       images_path, text = load_data(data_path, gf, labeled = False, multitask=multitask)
-      data = {'images':images_path} 
+      data = {'image':images_path} 
 
-      params = {}
-      model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
+      params = {'model':arch, 'multitask':multitask}
+      model = MODELS[arch](interm_layer_size, max_length, **params)
 
       predict(arch, model, data, batch_size, output, images_path, weights_path, multitask=multitask)
       save_encodings(arch, model, data, batch_size, output, images_path, weights_path)
