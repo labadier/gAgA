@@ -3,7 +3,7 @@ from models.LXMERT import LXMERT
 from models.VisualBERT import VisualBERT
 from models.models import save_encodings, train_model_CV, train_with_dev, predict
 from models.models import VISUAL_MODELS, MODELS
-from utils import bcolors, load_data, plot_training
+from utils import bcolors, load_data, plot_training, load_mixed_data
 import params
 
 torch.manual_seed(0)
@@ -14,7 +14,7 @@ def check_params(args=None):
   parser = argparse.ArgumentParser(description='Language Model Encoder')
 
 
-  parser.add_argument('-modeltype', metavar='modeltype', help='Type of Architecture, e.g. Multimodal', choices=['multimodal', 'text', 'images'])
+  parser.add_argument('-modeltype', metavar='modeltype', help='Type of Architecture, e.g. Multimodal', choices=['multimodal', 'mixed', 'text', 'images'])
   parser.add_argument('-arch', metavar='architecture', help='Architecture')
   parser.add_argument('-phase', metavar='phase', help='Phase')
   parser.add_argument('-output', metavar='output', help='Output Path')
@@ -108,6 +108,7 @@ if __name__ == '__main__':
       model = MODELS[arch](interm_layer_size=interm_layer_size, max_length=max_length, **params)
 
       predict(arch, model, data, batch_size, output, images_path, weights_path, multitask=multitask)
+      save_encodings(arch, model, data, batch_size, output, images_path, weights_path)
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     exit(0)
   
@@ -193,3 +194,23 @@ if __name__ == '__main__':
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
     
     exit(0)
+
+  if modeltype == 'mixed':
+
+    datatest, datatrain = load_mixed_data()
+    if phase == 'train':
+
+      output = os.path.join(output, 'logs')
+
+      if os.path.exists(output) == False:
+        os.system(f'mkdir {output}')
+
+
+      history = train_model_CV('multimodal', datatrain, splits = splits, epoches = epoches, 
+                          batch_size = batch_size, max_length = max_length, interm_layer_size = interm_layer_size,
+                          lr = learning_rate,  decay=decay, output=output, mode=training_mode, 
+                          multitask=multitask)
+    
+      print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
+      plot_training(history[-1], arch, output, 'acc')
+    

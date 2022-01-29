@@ -1,4 +1,3 @@
-from tkinter.tix import Tree
 import torch, sys
 sys.path.append('../')
 from transformers import AutoTokenizer, AutoModel

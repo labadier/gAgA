@@ -1,9 +1,8 @@
-from cProfile import label
-from numpy.random import f
 import torch, pandas, numpy as np, os, math
 from models.LXMERT import LXMERT
 from models.VisualBERT import VisualBERT
 from models.ViT import ViT
+from models.GMU import GMU
 from models.seqModel import SeqModel
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score, fbeta_score
@@ -14,7 +13,9 @@ import time
 import random
 
 VISUAL_MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT}
-MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT, 'deberta': SeqModel, 'bertweet': SeqModel, 'vit':ViT}
+MODELS = {'lxmert': LXMERT, 'visualbert': VisualBERT, 'deberta': SeqModel, 'bertweet': SeqModel, 'vit':ViT, 'multimodal':GMU}
+# VISUAL_MODELS = {}
+# MODELS = {'multimodal':GMU}
 
 def seed_worker(worker_id):
   worker_seed = torch.initial_seed() % 2**32
@@ -196,9 +197,9 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
 
     for j in data.keys():
       if j != 'labels':
-        datatrain[j] = data[j][train_index]
+        datatrain[j] = data[j][train_index].reshape(8000, -1)
         datadev[j] = data[j][test_index]
-    
+    print(data['labels'][train_index].shape)
     trainloader = DataLoader(MultimodalData(datatrain, data['labels'][train_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
     devloader = DataLoader(MultimodalData(datadev, data['labels'][test_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 

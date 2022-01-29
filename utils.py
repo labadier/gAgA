@@ -1,4 +1,4 @@
-from operator import truediv
+import torch
 import pandas, numpy as np, os, math
 from matplotlib import pyplot as plt
 
@@ -13,7 +13,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def load_data(path, gold_file, labeled = True, multitask=False, imageField="file_name", textField="Text Transcription", labelField="misogynous"):
+def load_data(path, gold_file, labeled = True, multitask=False, imageField="file_name", textField="Text Transcription", labelField="misogynous", dataless=False):
 
   cols = [imageField, labelField, textField]
   if multitask == True:
@@ -27,7 +27,7 @@ def load_data(path, gold_file, labeled = True, multitask=False, imageField="file
   for i in range(len(df)):
     pic = os.path.join(path, df[i,0])
     
-    if os.path.exists(pic):
+    if os.path.exists(pic) or dataless:
       images.append(pic)
       text.append(df[i,-1])
       if labeled == True:
@@ -47,7 +47,26 @@ def compute_eta(eta):
   s = int(int(eta%3600)%60)
   
   return' ETA: {}{}:{}{}:{}{}'.format('0'*(1 - int(math.log10(h + 0.99))), h, '0'*(1 - int(math.log10(m+1+ 0.99))), m, '0'*(1 - int(math.log10(s+0.99))), s)
-        
+
+def load_mixed_data():
+
+  multitask = "_mtl"
+  _, _, labels = load_data('data', 'training.csv', True, multitask=True, dataless=True)
+  images_path = pandas.read_csv(os.path.join('data', 'Test.csv'), sep='\t', usecols=['file_name']).to_numpy()
+
+  datatrain = {'labels':labels}
+  datatest = {'images_path':images_path}
+
+  for rep in ['bt', 'visualbert', 'vit']:
+    if rep == 'bt':
+      datatrain['text'] = torch.unsqueeze(torch.load(f'data/train_{rep}{multitask}.pt').cpu(), axis=1).numpy()
+      datatest['text'] =  torch.unsqueeze(torch.load(f'data/test_{rep}{multitask}.pt').cpu(), axis=1).numpy()
+    else: 
+      datatrain['text'] = np.concatenate([datatrain['text'], torch.unsqueeze(torch.load(f'data/train_{rep}{multitask}.pt').cpu(), axis=1).numpy()], axis=1)
+      datatest['text'] = np.concatenate([datatest['text'],torch.unsqueeze(torch.load(f'data/test_{rep}{multitask}.pt').cpu(), axis=1).numpy()], axis= 1)
+  
+  return datatest, datatrain
+
 
 def plot_training(history, model, output, measure='loss'):
     
