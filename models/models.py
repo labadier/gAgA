@@ -197,9 +197,9 @@ def train_model_CV(model_name, data, splits = 5, epoches = 4, batch_size = 8, ma
 
     for j in data.keys():
       if j != 'labels':
-        datatrain[j] = data[j][train_index].reshape(8000, -1)
-        datadev[j] = data[j][test_index]
-    print(data['labels'][train_index].shape)
+        datatrain[j] = data[j][train_index]
+        datadev[j] = data[j][test_index] 
+    
     trainloader = DataLoader(MultimodalData(datatrain, data['labels'][train_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
     devloader = DataLoader(MultimodalData(datadev, data['labels'][test_index]), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
 

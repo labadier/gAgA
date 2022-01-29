@@ -16,7 +16,7 @@ splits = 5
 multitask='_mtl'
 representations = 'visualbert'
 
-
+#%%
 _, _, labels = load_data('data', 'training.csv', True, multitask=True, dataless=True)
 images_path = pandas.read_csv(os.path.join('data', 'Test.csv'), sep='\t', usecols=['file_name']).to_numpy()
 

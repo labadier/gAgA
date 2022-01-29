@@ -197,7 +197,7 @@ if __name__ == '__main__':
 
   if modeltype == 'mixed':
 
-    datatest, datatrain = load_mixed_data()
+    datatest, datatrain = load_mixed_data(multitask)
     if phase == 'train':
 
       output = os.path.join(output, 'logs')
@@ -213,4 +213,18 @@ if __name__ == '__main__':
     
       print(f"{bcolors.OKCYAN}{bcolors.BOLD}Training Finished for {arch.upper()} Model{bcolors.ENDC}")
       plot_training(history[-1], arch, output, 'acc')
+    
+    if phase == 'eval':
+    
+      images_path, text = load_data(data_path, gf, labeled = False, multitask=multitask)
+      data = {'text':datatest['text']} 
+
+      params = {'model':arch, 'mode':'static', 'multitask':multitask}
+      model = MODELS[arch](interm_layer_size, max_length, **params)
+
+      predict(arch, model, data, batch_size, output, datatest['images_path'], weights_path,multitask=multitask)
+      # save_encodings(arch, model, data, batch_size, output, 'images_path', weights_path)
+      
+      print(f"{bcolors.OKCYAN}{bcolors.BOLD}Predictions Saved{bcolors.ENDC}")
+    
     

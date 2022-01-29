@@ -1,3 +1,4 @@
+from types import TracebackType
 import torch
 import pandas, numpy as np, os, math
 from matplotlib import pyplot as plt
@@ -48,13 +49,16 @@ def compute_eta(eta):
   
   return' ETA: {}{}:{}{}:{}{}'.format('0'*(1 - int(math.log10(h + 0.99))), h, '0'*(1 - int(math.log10(m+1+ 0.99))), m, '0'*(1 - int(math.log10(s+0.99))), s)
 
-def load_mixed_data():
+def load_mixed_data(multitask):
 
   multitask = "_mtl"
   _, _, labels = load_data('data', 'training.csv', True, multitask=True, dataless=True)
   images_path = pandas.read_csv(os.path.join('data', 'Test.csv'), sep='\t', usecols=['file_name']).to_numpy()
 
-  datatrain = {'labels':labels}
+  if multitask == True:
+    datatrain = {'labels':labels}
+  else: datatrain = {'labels':labels[:,0]}
+
   datatest = {'images_path':images_path}
 
   for rep in ['bt', 'visualbert', 'vit']:

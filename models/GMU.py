@@ -49,7 +49,7 @@ class GMU(torch.nn.Module):
       self.classifier = torch.nn.Sequential(torch.nn.Linear(in_features=64, out_features=interm_size), torch.nn.LeakyReLU(), torch.nn.Linear(in_features=interm_size, out_features=5))
       self.loss_criterion = MultiTaskLoss()
     else: 
-      self.classifier = torch.nn.Sequential(torch.nn.Linear(in_features=64, out_features=interm_size), torch.nn.LeakyReLU(), torch.nn.Linear(in_features=interm_size, out_features=5))
+      self.classifier = torch.nn.Sequential(torch.nn.Linear(in_features=64, out_features=interm_size), torch.nn.LeakyReLU(), torch.nn.Linear(in_features=interm_size, out_features=2))
       self.loss_criterion = torch.nn.CrossEntropyLoss()
 
     self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -58,10 +58,10 @@ class GMU(torch.nn.Module):
   def forward(self, A, attention=False):
       
     if attention == True:
-      _, att = self.gmu(A.to(device=self.device), getattention=True)
+      _, att = self.gmu(A['text'].to(device=self.device), getattention=True)
       return att
 
-    X = self.gmu(A.to(device=self.device))
+    X = self.gmu(A['text'].to(device=self.device))
     return self.classifier(X)
 
 
@@ -69,6 +69,7 @@ class GMU(torch.nn.Module):
       self.load_state_dict(torch.load(path, map_location=self.device))
 
   def save(self, path):
-    if os.path.exists('./logs') == False:
-        os.system('mkdir logs')
-    torch.save(self.state_dict(), os.path.join('logs', path))
+    torch.save(self.state_dict(), path)
+  
+  def makeOptimizer(self, lr, decay):
+    return torch.optim.Adam(self.parameters(), lr=lr, weight_decay=decay)
